@@ -1,13 +1,11 @@
-game = { "Game" ~ WS ~ game_id ~ ":" ~ WS ~ set ~ (WS ~ ";" ~ WS ~ set)* }
-game_id = { digit+ }
-set = { cubes ~ (WS ~ "," ~ WS ~ cubes)* }
-cubes = { number_of_cubes ~ WS ~ color }
-number_of_cubes = { digit+ }
+game = { "Game" ~ number ~ ":" ~ set ~ (";" ~ set)* }
+set = { cubes ~ ("," ~ cubes)* }
+cubes = { number ~ color }
 
 color = _{ red | blue | green }
 red = { "red" }
 blue = { "blue" }
 green = { "green" }
 
-digit = _{ '0'..'9' }
-WS = _{ " "* }
+number = @{ ('0'..'9')+ }
+WHITESPACE = _{ " " }
