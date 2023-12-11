@@ -1,4 +1,4 @@
-use std::{fs, collections::HashSet};
+use std::fs;
 
 fn transpose(grid: Vec<Vec<char>>) -> Vec<Vec<char>> {
     let mut new_grid = vec![vec![' '; grid.len()]; grid[0].len()];
@@ -10,11 +10,11 @@ fn transpose(grid: Vec<Vec<char>>) -> Vec<Vec<char>> {
     new_grid
 }
 
-fn find_empty(grid: &Vec<Vec<char>>) -> HashSet<usize> {
-    let mut result = HashSet::new();
+fn find_empty(grid: &Vec<Vec<char>>) -> Vec<usize> {
+    let mut result = Vec::new();
     for (y, row) in grid.iter().enumerate() {
         if row.iter().all(|c| *c == '.') {
-            result.insert(y);
+            result.push(y);
         }
     }
     result
@@ -57,13 +57,13 @@ fn main() {
             };
             let mut dx = x1 - x0;
             let mut dy = y1 - y0;
-            for x in x0..x1 {
-                if empty_cols.contains(&x) {
+            for x in &empty_cols {
+                if x0 <= *x && *x <= x1 {
                     dx += 1;
                 }
             }
-            for y in y0..y1 {
-                if empty_rows.contains(&y) {
+            for y in &empty_rows {
+                if y0 <= *y && *y <= y1 {
                     dy += 1;
                 }
             }
