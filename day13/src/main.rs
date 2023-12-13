@@ -24,11 +24,11 @@ fn transpose(pattern: Vec<Vec<char>>) -> Vec<Vec<char>> {
     new_pattern
 }
 
-fn find_reflection(pattern: &Vec<Vec<char>>) -> Option<usize> {
+fn find_reflection(pattern: &Vec<Vec<char>>, part2: bool) -> Option<usize> {
     for i in 0..pattern.len() - 1 {
         let mut pi = i + 1;
         let mut ni = i + 1;
-        let mut found_smudge = false;
+        let mut found_smudge = !part2;
         while pi > 0 && ni < pattern.len() {
             let cr = compare(&pattern[pi - 1], &pattern[ni], !found_smudge);
             if !cr.0 {
@@ -48,22 +48,24 @@ fn find_reflection(pattern: &Vec<Vec<char>>) -> Option<usize> {
 }
 
 fn main() {
-    let input = fs::read_to_string("input.txt").expect("Could not read file");
-    let patterns = input.split("\n\n")
-        .map(|p| p.trim().split("\n")
-            .map(|line| line.chars().collect::<Vec<_>>())
-            .collect::<Vec<_>>()
-        ).collect::<Vec<_>>();
+    for part2 in [false, true] {
+        let input = fs::read_to_string("input.txt").expect("Could not read file");
+        let patterns = input.split("\n\n")
+            .map(|p| p.trim().split("\n")
+                .map(|line| line.chars().collect::<Vec<_>>())
+                .collect::<Vec<_>>()
+            ).collect::<Vec<_>>();
 
-    let mut sum = 0;
-    for pattern in patterns {
-        let hori_ref = find_reflection(&pattern);
-        let pattern = transpose(pattern);
-        let vert_ref = find_reflection(&pattern);
+        let mut sum = 0;
+        for pattern in patterns {
+            let hori_ref = find_reflection(&pattern, part2);
+            let pattern = transpose(pattern);
+            let vert_ref = find_reflection(&pattern, part2);
 
-        sum += hori_ref.map(|i| i * 100).unwrap_or(0);
-        sum += vert_ref.unwrap_or(0);
+            sum += hori_ref.map(|i| i * 100).unwrap_or(0);
+            sum += vert_ref.unwrap_or(0);
+        }
+
+        println!("{}", sum);
     }
-
-    println!("{}", sum);
 }
