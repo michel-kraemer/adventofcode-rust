@@ -10,36 +10,18 @@ fn transpose(pattern: Vec<Vec<char>>) -> Vec<Vec<char>> {
     new_pattern
 }
 
-fn roll_north(grid: Vec<Vec<char>>) -> Vec<Vec<char>> {
+fn roll(grid: Vec<Vec<char>>, up: bool) -> Vec<Vec<char>> {
     grid.iter().map(|col| {
         let mut new_col = vec!['.'; col.len()];
         let mut ni = 0;
         for i in 0..col.len() {
-            let cell = col[i];
+            let cell = col[if up { i } else { col.len() - 1 - i }];
             if cell == '#' {
-                new_col[i] = '#';
+                new_col[if up { i } else { col.len() - 1 - i }] = '#';
                 ni = i + 1;
             } else if cell == 'O' {
-                new_col[ni] = 'O';
+                new_col[if up { ni } else { col.len() - 1 - ni }] = 'O';
                 ni += 1;
-            }
-        }
-        new_col
-    }).collect::<Vec<_>>()
-}
-
-fn roll_south(grid: Vec<Vec<char>>) -> Vec<Vec<char>> {
-    grid.iter().map(|col| {
-        let mut new_col = vec!['.'; col.len()];
-        let mut ni = col.len() - 1;
-        for i in (0..col.len()).rev() {
-            let cell = col[i];
-            if cell == '#' {
-                new_col[i] = '#';
-                ni = i - 1;
-            } else if cell == 'O' {
-                new_col[ni] = 'O';
-                ni -= 1;
             }
         }
         new_col
@@ -49,19 +31,19 @@ fn roll_south(grid: Vec<Vec<char>>) -> Vec<Vec<char>> {
 fn cycle(grid: Vec<Vec<char>>) -> Vec<Vec<char>> {
     // north
     let grid = transpose(grid);
-    let grid = roll_north(grid);
+    let grid = roll(grid, true);
 
     // west
     let grid = transpose(grid);
-    let grid = roll_north(grid);
+    let grid = roll(grid, true);
 
     // south
     let grid = transpose(grid);
-    let grid = roll_south(grid);
+    let grid = roll(grid, false);
 
     // east
     let grid = transpose(grid);
-    let grid = roll_south(grid);
+    let grid = roll(grid, false);
 
     grid
 }
@@ -75,22 +57,21 @@ fn main() {
 
         if part1 {
             grid = transpose(grid);
-            grid = roll_north(grid);
+            grid = roll(grid, true);
         } else {
             let mut seen = HashMap::new();
-            let mut cycle_detected = None;
+            let mut steps_left_after_cycle = None;
             for i in 0..1000000000 {
-                let key = grid.iter().map(|col| col.iter().collect::<String>()).collect::<Vec<_>>().join("\n");
-                if cycle_detected == None {
-                    if seen.contains_key(&key) {
-                        let cycle_len = i - seen.get(&key).unwrap();
-                        cycle_detected = Some((1000000000 - i) % cycle_len);
+                if steps_left_after_cycle == None {
+                    if seen.contains_key(&grid) {
+                        let cycle_len = i - seen.get(&grid).unwrap();
+                        steps_left_after_cycle = Some((1000000000 - i) % cycle_len);
                     } else {
-                        seen.insert(key, i);
+                        seen.insert(grid.clone(), i);
                     }
                 } else {
-                    cycle_detected = Some(cycle_detected.unwrap() - 1);
-                    if let Some(0) = cycle_detected {
+                    steps_left_after_cycle = Some(steps_left_after_cycle.unwrap() - 1);
+                    if let Some(0) = steps_left_after_cycle {
                         break;
                     }
                 }
