@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, collections::HashMap};
 
 fn transpose(pattern: Vec<Vec<char>>) -> Vec<Vec<char>> {
     let mut new_pattern = vec![vec![' '; pattern.len()]; pattern[0].len()];
@@ -77,8 +77,23 @@ fn main() {
             grid = transpose(grid);
             grid = roll_north(grid);
         } else {
-            // exactly only 1000 iterations are necessary - after that, the pattern repeats
-            for _ in 0..1000 {
+            let mut seen = HashMap::new();
+            let mut cycle_detected = None;
+            for i in 0..1000000000 {
+                let key = grid.iter().map(|col| col.iter().collect::<String>()).collect::<Vec<_>>().join("\n");
+                if cycle_detected == None {
+                    if seen.contains_key(&key) {
+                        let cycle_len = i - seen.get(&key).unwrap();
+                        cycle_detected = Some((1000000000 - i) % cycle_len);
+                    } else {
+                        seen.insert(key, i);
+                    }
+                } else {
+                    cycle_detected = Some(cycle_detected.unwrap() - 1);
+                    if let Some(0) = cycle_detected {
+                        break;
+                    }
+                }
                 grid = cycle(grid);
             }
             grid = transpose(grid);
