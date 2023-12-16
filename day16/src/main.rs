@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fs, mem::swap};
+use std::{collections::{HashSet, VecDeque}, fs, mem::swap};
 
 #[derive(Clone, Hash, PartialEq, Eq)]
 struct Beam {
@@ -9,84 +9,76 @@ struct Beam {
 }
 
 fn count_energized(grid: &Vec<Vec<char>>, starting_beam: Beam) -> usize {
-    let mut beams = Vec::new();
-    beams.push(starting_beam);
+    let mut beams = VecDeque::new();
+    beams.push_back(starting_beam);
 
     let mut energized = HashSet::new();
     let mut seen = HashSet::new();
 
-    while beams.len() > 0 {
-        beams = beams
-            .iter()
-            .flat_map(|beam| {
-                let mut result = Vec::new();
-                let mut beam = (*beam).clone();
+    while !beams.is_empty() {
+        let mut beam = beams.pop_front().unwrap();
 
-                energized.insert((beam.x, beam.y));
+        energized.insert((beam.x, beam.y));
 
-                if !seen.contains(&beam) {
-                    seen.insert(beam.clone());
+        if !seen.contains(&beam) {
+            seen.insert(beam.clone());
 
-                    let c = grid[beam.y as usize][beam.x as usize];
-                    match c {
-                        '/' => {
-                            swap(&mut beam.dir_x, &mut beam.dir_y);
-                            beam.dir_x = -beam.dir_x;
-                            beam.dir_y = -beam.dir_y;
+            let c = grid[beam.y as usize][beam.x as usize];
+            match c {
+                '/' => {
+                    swap(&mut beam.dir_x, &mut beam.dir_y);
+                    beam.dir_x = -beam.dir_x;
+                    beam.dir_y = -beam.dir_y;
+                }
+
+                '\\' => {
+                    swap(&mut beam.dir_x, &mut beam.dir_y);
+                }
+
+                '-' => {
+                    if beam.dir_y != 0 {
+                        beam.dir_x = -1;
+                        beam.dir_y = 0;
+                        if beam.x < grid[0].len() as i32 - 1 {
+                            beams.push_back(Beam {
+                                x: beam.x + 1,
+                                y: beam.y,
+                                dir_x: 1,
+                                dir_y: 0,
+                            })
                         }
-
-                        '\\' => {
-                            swap(&mut beam.dir_x, &mut beam.dir_y);
-                        }
-
-                        '-' => {
-                            if beam.dir_y != 0 {
-                                beam.dir_x = -1;
-                                beam.dir_y = 0;
-                                if beam.x < grid[0].len() as i32 - 1 {
-                                    result.push(Beam {
-                                        x: beam.x + 1,
-                                        y: beam.y,
-                                        dir_x: 1,
-                                        dir_y: 0,
-                                    })
-                                }
-                            }
-                        }
-
-                        '|' => {
-                            if beam.dir_x != 0 {
-                                beam.dir_x = 0;
-                                beam.dir_y = -1;
-                                if beam.y < grid.len() as i32 - 1 {
-                                    result.push(Beam {
-                                        x: beam.x,
-                                        y: beam.y + 1,
-                                        dir_x: 0,
-                                        dir_y: 1,
-                                    })
-                                }
-                            }
-                        }
-
-                        _ => {}
-                    }
-
-                    beam.x += beam.dir_x;
-                    beam.y += beam.dir_y;
-
-                    if beam.x >= 0
-                        && beam.y >= 0
-                        && beam.x < grid[0].len() as i32
-                        && beam.y < grid.len() as i32
-                    {
-                        result.push(beam);
                     }
                 }
 
-                result
-            })
-            .collect();
+                '|' => {
+                    if beam.dir_x != 0 {
+                        beam.dir_x = 0;
+                        beam.dir_y = -1;
+                        if beam.y < grid.len() as i32 - 1 {
+                            beams.push_back(Beam {
+                                x: beam.x,
+                                y: beam.y + 1,
+                                dir_x: 0,
+                                dir_y: 1,
+                            })
+                        }
+                    }
+                }
+
+                _ => {}
+            }
+
+            beam.x += beam.dir_x;
+            beam.y += beam.dir_y;
+
+            if beam.x >= 0
+                && beam.y >= 0
+                && beam.x < grid[0].len() as i32
+                && beam.y < grid.len() as i32
+            {
+                beams.push_back(beam);
+            }
+        }
     }
 
     energized.len()
