@@ -4,10 +4,10 @@ use std::{
     ops::RangeInclusive,
 };
 
-fn evaluate<'a>(
+fn evaluate<'a, 'b>(
     p: HashMap<&'a str, RangeInclusive<usize>>,
-    workflow: &'a Vec<&str>,
-) -> Vec<(HashMap<&'a str, RangeInclusive<usize>>, &'a str)> {
+    workflow: &'b Vec<&str>,
+) -> Vec<(HashMap<&'a str, RangeInclusive<usize>>, &'b str)> {
     let mut p = p;
     let mut result = Vec::new();
 
@@ -34,14 +34,12 @@ fn evaluate<'a>(
                 } else {
                     // split the range
                     let mut new_r = p.clone();
-                    let nri = new_r.get(&prop).unwrap();
-                    new_r.insert(&prop, v + 1..=*nri.end());
+                    let nri = new_r.get_mut(prop).unwrap();
+                    *nri = v + 1..=*nri.end();
                     result.push((new_r, dest));
 
-                    let mut new_p = p.clone();
-                    let npi = new_p.get(&prop).unwrap();
-                    new_p.insert(&prop, *npi.start()..=v);
-                    p = new_p;
+                    let npi = p.get_mut(prop).unwrap();
+                    *npi = *npi.start()..=v;
                 }
             } else {
                 if *actual_prop.end() < v {
@@ -51,14 +49,12 @@ fn evaluate<'a>(
                     // nothing to do
                 } else {
                     let mut new_r = p.clone();
-                    let nri = new_r.get(&prop).unwrap();
-                    new_r.insert(&prop, *nri.start()..=v - 1);
+                    let nri = new_r.get_mut(prop).unwrap();
+                    *nri = *nri.start()..=v - 1;
                     result.push((new_r, dest));
 
-                    let mut new_p = p.clone();
-                    let npi = new_p.get(&prop).unwrap();
-                    new_p.insert(&prop, v..=*npi.end());
-                    p = new_p;
+                    let npi = p.get_mut(prop).unwrap();
+                    *npi = v..=*npi.end();
                 }
             }
         } else {
