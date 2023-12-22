@@ -7,8 +7,8 @@ struct Brick {
     z: usize,
 }
 
-fn fall(bricks: &Vec<(Brick, Brick, usize)>) -> Vec<(Brick, Brick, usize)> {
-    let mut grid = vec![vec![0; 10]; 10];
+fn fall(bricks: &Vec<(Brick, Brick, usize)>, w: usize, h: usize) -> Vec<(Brick, Brick, usize)> {
+    let mut grid = vec![vec![0; w]; h];
 
     let mut new_bricks = Vec::new();
     for b in bricks {
@@ -65,37 +65,39 @@ fn main() {
     let mut bricks = input
         .lines()
         .map(|line| line.split_once("~").unwrap())
-        .enumerate()
-        .map(|(i, (s, e))| {
+        .map(|(s, e)| {
             let a = parse_brick(s);
             let b = parse_brick(e);
             if a.z <= b.z {
-                (a, b, i)
+                (a, b)
             } else {
-                (b, a, i)
+                (b, a)
             }
         })
         .collect::<Vec<_>>();
 
     bricks.sort_by(|a, b| a.0.z.cmp(&b.0.z));
 
-    let all_fallen_bricks = fall(&bricks);
+    let bricks = bricks
+        .into_iter()
+        .enumerate()
+        .map(|(i, b)| (b.0, b.1, i))
+        .collect::<Vec<_>>();
+
+    let w = bricks.iter().map(|b| max(b.0.x, b.1.x)).max().unwrap() + 1;
+    let h = bricks.iter().map(|b| max(b.0.y, b.1.y)).max().unwrap() + 1;
+
+    let all_fallen_bricks = fall(&bricks, w, h);
 
     let mut s = 0;
     let mut would_fall = 0;
     for i in 0..bricks.len() {
-        let filtered_bricks = bricks
-            .iter()
-            .filter(|b| b.2 != i)
-            .map(|b| b.clone())
-            .collect::<Vec<_>>();
-        let filtered_fallen_bricks = all_fallen_bricks
-            .iter()
-            .filter(|b| b.2 != i)
-            .map(|b| b.clone())
-            .collect::<Vec<_>>();
+        let mut filtered_bricks = bricks.clone();
+        filtered_bricks.remove(i);
+        let mut filtered_fallen_bricks = all_fallen_bricks.clone();
+        filtered_fallen_bricks.remove(i);
 
-        let fb = fall(&filtered_bricks);
+        let fb = fall(&filtered_bricks, w, h);
         if fb == filtered_fallen_bricks {
             s += 1;
         } else {
@@ -103,8 +105,8 @@ fn main() {
                 if j == i {
                     continue;
                 }
-                let t = filtered_fallen_bricks.iter().find(|b| b.2 == j).unwrap();
-                let u = fb.iter().find(|b| b.2 == j).unwrap();
+                let t = &filtered_fallen_bricks[if j < i { j } else { j - 1 }];
+                let u = &fb[if j < i { j } else { j - 1 }];
                 if t.0.z != u.0.z {
                     would_fall += 1;
                 }
