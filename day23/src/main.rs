@@ -8,14 +8,14 @@ fn longest_path(
     edges: &HashMap<(usize, usize), Vec<((usize, usize), usize)>>,
     pos: (usize, usize),
     end: (usize, usize),
-    seen: &mut HashSet<(usize, usize)>,
+    seen: &mut Vec<Vec<bool>>,
 ) -> usize {
-    seen.insert(pos);
+    seen[pos.1][pos.0] = true;
     let neighbors = edges.get(&pos).unwrap();
     let m = neighbors
         .iter()
         .map(|n| {
-            if seen.contains(&n.0) {
+            if seen[n.0.1][n.0.0] {
                 0
             } else if n.0 == end {
                 n.1
@@ -30,7 +30,7 @@ fn longest_path(
         })
         .max()
         .unwrap();
-    seen.remove(&pos);
+    seen[pos.1][pos.0] = false;
     m
 }
 
@@ -211,7 +211,7 @@ fn main() {
         // Use DFS to find the longest path from the start node to the end node.
         // Since we've converted the grid into a graph, this is a lot less
         // complex than doing DFS directly on the grid.
-        let mut seen: HashSet<(usize, usize)> = HashSet::new();
+        let mut seen = vec![vec![false; grid[0].len()]; grid.len()];
         let l = longest_path(&edges, start, end, &mut seen);
 
         println!("{}", l);
