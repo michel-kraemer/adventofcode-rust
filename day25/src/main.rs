@@ -11,11 +11,7 @@ use std::{
 ///
 /// See: Ulrik Brandes (2001) A Faster Algorithm for Betweenness Centrality, The
 /// Journal of Mathematical Sociology, 25:2, 163-177, DOI: 10.1080/0022250X.2001.9990249
-fn brandes(
-    vertices: usize,
-    connections: &Vec<HashSet<usize>>,
-    top_n: usize,
-) -> Vec<usize> {
+fn brandes(vertices: usize, connections: &Vec<HashSet<usize>>, top_n: usize) -> Vec<usize> {
     let mut cb = vec![0.; vertices];
 
     for s in 0..vertices {
@@ -70,19 +66,17 @@ fn brandes(
 
 /// Perform DFS starting with node n and collect all found nodes until no
 /// more node can be visited
-fn dfs(
-    n: usize,
-    connections: &Vec<HashSet<usize>>,
-    visited: &mut HashSet<usize>,
-) {
-    if visited.contains(&n) {
-        return;
+fn dfs(n: usize, connections: &Vec<HashSet<usize>>, visited: &mut Vec<bool>) -> usize {
+    if visited[n] {
+        return 0;
     }
+    visited[n] = true;
 
-    visited.insert(n);
+    let mut r = 1;
     for c in &connections[n] {
-        dfs(*c, connections, visited);
+        r += dfs(*c, connections, visited);
     }
+    r
 }
 
 fn main() {
@@ -94,10 +88,15 @@ fn main() {
             let a = l.split_once(": ").unwrap();
             let len = vertices.len();
             let a0i = *vertices.entry(a.0).or_insert(len);
-            (a0i, a.1.split(" ").map(|v| {
-                let len = vertices.len();
-                *vertices.entry(v).or_insert(len)
-            }).collect::<Vec<_>>())
+            (
+                a0i,
+                a.1.split(" ")
+                    .map(|v| {
+                        let len = vertices.len();
+                        *vertices.entry(v).or_insert(len)
+                    })
+                    .collect::<Vec<_>>(),
+            )
         })
         .collect::<Vec<_>>();
 
@@ -123,12 +122,8 @@ fn main() {
 
     // calculate number of vertices in an arbitrary cluster and multiply
     // it with the number of vertices not belonging to this cluster
-    let mut visited = HashSet::new();
-    dfs(
-        0,
-        &connections,
-        &mut visited,
-    );
-    let r = visited.len() * (connections.len() - visited.len());
+    let mut visited = vec![false; vertices.len()];
+    let n = dfs(0, &connections, &mut visited);
+    let r = n * (connections.len() - n);
     println!("{}", r);
 }
