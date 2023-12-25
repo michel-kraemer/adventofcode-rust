@@ -123,7 +123,11 @@ fn main() {
     // calculate number of vertices in an arbitrary cluster and multiply
     // it with the number of vertices not belonging to this cluster
     let mut visited = vec![false; vertices.len()];
-    let n = dfs(0, &connections, &mut visited);
+    let mut astart = 0;
+    while top.contains(&astart) {
+        astart += 1
+    }
+    let n = dfs(astart, &connections, &mut visited);
     let r = n * (connections.len() - n);
     println!("{}", r);
 }
