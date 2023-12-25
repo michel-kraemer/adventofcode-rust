@@ -63,7 +63,6 @@ fn brandes(
         }
     }
 
-    let cb = cb.into_iter().collect::<Vec<_>>();
     let mut cb = cb.into_iter().enumerate().collect::<Vec<_>>();
     cb.sort_by(|a, b| a.1.total_cmp(&b.1));
     cb.iter().rev().take(top_n).map(|n| n.0).collect::<Vec<_>>()
