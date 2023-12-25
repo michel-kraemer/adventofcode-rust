@@ -64,9 +64,9 @@ fn brandes(vertices: usize, connections: &Vec<HashSet<usize>>, top_n: usize) -> 
     cb.iter().rev().take(top_n).map(|n| n.0).collect::<Vec<_>>()
 }
 
-/// Perform DFS starting with node n and collect all found nodes until no
+/// Perform DFS starting with node n and count all found nodes until no
 /// more node can be visited
-fn dfs(n: usize, connections: &Vec<HashSet<usize>>, visited: &mut Vec<bool>) -> usize {
+fn count(n: usize, connections: &Vec<HashSet<usize>>, visited: &mut Vec<bool>) -> usize {
     if visited[n] {
         return 0;
     }
@@ -74,7 +74,7 @@ fn dfs(n: usize, connections: &Vec<HashSet<usize>>, visited: &mut Vec<bool>) -> 
 
     let mut r = 1;
     for c in &connections[n] {
-        r += dfs(*c, connections, visited);
+        r += count(*c, connections, visited);
     }
     r
 }
@@ -127,7 +127,6 @@ fn main() {
     while top.contains(&astart) {
         astart += 1
     }
-    let n = dfs(astart, &connections, &mut visited);
-    let r = n * (connections.len() - n);
-    println!("{}", r);
+    let n = count(astart, &connections, &mut visited);
+    println!("{}", n * (connections.len() - n));
 }
