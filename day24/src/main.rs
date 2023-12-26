@@ -99,23 +99,23 @@ fn main() {
             let ctx = Context::new(&cfg);
             let solver = Solver::new(&ctx);
 
-            let rxs = ast::Int::new_const(&ctx, "rxs");
-            let rys = ast::Int::new_const(&ctx, "rys");
-            let rzs = ast::Int::new_const(&ctx, "rzs");
-            let rxv = ast::Int::new_const(&ctx, "rxv");
-            let ryv = ast::Int::new_const(&ctx, "ryv");
-            let rzv = ast::Int::new_const(&ctx, "rzv");
-            let zero = ast::Int::from_i64(&ctx, 0);
+            let rxs = ast::Int::new_const(&ctx, "rxs").to_real();
+            let rys = ast::Int::new_const(&ctx, "rys").to_real();
+            let rzs = ast::Int::new_const(&ctx, "rzs").to_real();
+            let rxv = ast::Int::new_const(&ctx, "rxv").to_real();
+            let ryv = ast::Int::new_const(&ctx, "ryv").to_real();
+            let rzv = ast::Int::new_const(&ctx, "rzv").to_real();
+            let zero = ast::Int::from_i64(&ctx, 0).to_real();
 
             // (rxs - hxs) * (hyv - ryv) - (rys - hys) * (hxv - rxv) = 0
             // (rzs - hzs) * (hyv - ryv) - (rys - hys) * (hzv - rzv) = 0
             for h in hailstones {
-                let hxs = ast::Int::from_i64(&ctx, h.0.x as i64);
-                let hys = ast::Int::from_i64(&ctx, h.0.y as i64);
-                let hzs = ast::Int::from_i64(&ctx, h.0.z as i64);
-                let hxv = ast::Int::from_i64(&ctx, h.1.x as i64);
-                let hyv = ast::Int::from_i64(&ctx, h.1.y as i64);
-                let hzv = ast::Int::from_i64(&ctx, h.1.z as i64);
+                let hxs = ast::Int::from_i64(&ctx, h.0.x as i64).to_real();
+                let hys = ast::Int::from_i64(&ctx, h.0.y as i64).to_real();
+                let hzs = ast::Int::from_i64(&ctx, h.0.z as i64).to_real();
+                let hxv = ast::Int::from_i64(&ctx, h.1.x as i64).to_real();
+                let hyv = ast::Int::from_i64(&ctx, h.1.y as i64).to_real();
+                let hzv = ast::Int::from_i64(&ctx, h.1.z as i64).to_real();
                 let eq1 =
                     ((&rxs - &hxs) * (&hyv - &ryv) - (&rys - &hys) * (&hxv - &rxv))._eq(&zero);
                 let eq2 =
@@ -126,14 +126,14 @@ fn main() {
 
             if let SatResult::Sat = solver.check() {
                 let model = solver.get_model().unwrap();
-                let rxs_v = model.eval(&rxs, true).unwrap().as_i64().unwrap();
-                let rys_v = model.eval(&rys, true).unwrap().as_i64().unwrap();
-                let rzs_v = model.eval(&rzs, true).unwrap().as_i64().unwrap();
+                let rxs_v = model.eval(&rxs, true).unwrap().to_string().parse::<f64>().unwrap();
+                let rys_v = model.eval(&rys, true).unwrap().to_string().parse::<f64>().unwrap();
+                let rzs_v = model.eval(&rzs, true).unwrap().to_string().parse::<f64>().unwrap();
                 // let rxv_v = model.eval(&rxv, true).unwrap().as_i64().unwrap();
                 // let ryv_v = model.eval(&ryv, true).unwrap().as_i64().unwrap();
                 // let rzv_v = model.eval(&rzv, true).unwrap().as_i64().unwrap();
                 // println!("{} {} {} / {} {} {}", rxs_v, rys_v, rzs_v, rxv_v, ryv_v, rzv_v);
-                println!("{}", rxs_v + rys_v + rzs_v);
+                println!("{}", (rxs_v + rys_v + rzs_v) as u64);
             } else {
                 panic!("No solution!");
             }
