@@ -1,4 +1,4 @@
-use std::{fs, collections::HashMap};
+use std::{collections::HashMap, fs};
 
 fn does_match(a: &str, springs: usize) -> bool {
     let a = a.as_bytes();
@@ -19,11 +19,25 @@ fn does_match(a: &str, springs: usize) -> bool {
     true
 }
 
-fn count_matches(si: usize, groups: &Vec<usize>, gi: usize, max_len: usize,
-        conditions: &str, cache: &mut HashMap<String, usize>) -> usize {
+fn count_matches(
+    si: usize,
+    groups: &Vec<usize>,
+    gi: usize,
+    max_len: usize,
+    conditions: &str,
+    cache: &mut HashMap<String, usize>,
+) -> usize {
     let mut key = String::from(&conditions[si..]);
     key.push('|');
-    key.push_str(groups.iter().skip(gi).map(|g| g.to_string()).collect::<Vec<_>>().join(",").as_str());
+    key.push_str(
+        groups
+            .iter()
+            .skip(gi)
+            .map(|g| g.to_string())
+            .collect::<Vec<_>>()
+            .join(",")
+            .as_str(),
+    );
 
     if let Some(c) = cache.get(&key) {
         return *c;
@@ -46,11 +60,21 @@ fn count_matches(si: usize, groups: &Vec<usize>, gi: usize, max_len: usize,
             cache.insert(key, result);
             return result;
         }
-        if !does_match(&conditions[(si + spaces)..(si + spaces + groups[gi])], groups[gi]) {
+        if !does_match(
+            &conditions[(si + spaces)..(si + spaces + groups[gi])],
+            groups[gi],
+        ) {
             continue;
         }
         if gi < groups.len() - 1 {
-            let next = count_matches(si + spaces + groups[gi], groups, gi + 1, max_len, &conditions, cache);
+            let next = count_matches(
+                si + spaces + groups[gi],
+                groups,
+                gi + 1,
+                max_len,
+                &conditions,
+                cache,
+            );
             result += next;
         } else {
             if !conditions[(si + spaces + groups[gi])..].contains('#') {
@@ -65,32 +89,50 @@ fn count_matches(si: usize, groups: &Vec<usize>, gi: usize, max_len: usize,
 }
 
 fn main() {
-    let input = fs::read_to_string("input.txt").expect("Could not read file");
+    for part1 in [true, false] {
+        let input = fs::read_to_string("input.txt").expect("Could not read file");
 
-    let mut cache: HashMap<String, usize> = HashMap::new();
+        let mut cache: HashMap<String, usize> = HashMap::new();
 
-    let matches: usize = input.lines().map(|line| {
-        let (conditions, groups) = line.split_once(" ").unwrap();
-        let groups = groups.split(",").map(|s| s.parse::<usize>().unwrap()).collect::<Vec<_>>();
+        let matches: usize = input
+            .lines()
+            .map(|line| {
+                let (conditions, groups) = line.split_once(" ").unwrap();
+                let groups = groups
+                    .split(",")
+                    .map(|s| s.parse::<usize>().unwrap())
+                    .collect::<Vec<_>>();
 
-        let mut unfolded_conditions = String::new();
-        for i in 0..5 {
-            if i > 0 {
-                unfolded_conditions.push('?');
-            }
-            unfolded_conditions.push_str(conditions);
-        }
+                if part1 {
+                    count_matches(0, &groups, 0, conditions.len(), &conditions, &mut cache)
+                } else {
+                    let mut unfolded_conditions = String::new();
+                    for i in 0..5 {
+                        if i > 0 {
+                            unfolded_conditions.push('?');
+                        }
+                        unfolded_conditions.push_str(conditions);
+                    }
 
-        let mut unfolded_groups = Vec::new();
-        for _ in 0..5 {
-            for g in &groups {
-                unfolded_groups.push(*g);
-            }
-        }
+                    let mut unfolded_groups = Vec::new();
+                    for _ in 0..5 {
+                        for g in &groups {
+                            unfolded_groups.push(*g);
+                        }
+                    }
 
-        count_matches(0, &unfolded_groups, 0,
-            unfolded_conditions.len(), &unfolded_conditions, &mut cache)
-    }).sum();
+                    count_matches(
+                        0,
+                        &unfolded_groups,
+                        0,
+                        unfolded_conditions.len(),
+                        &unfolded_conditions,
+                        &mut cache,
+                    )
+                }
+            })
+            .sum();
 
-    println!("{}", matches);
+        println!("{}", matches);
+    }
 }
