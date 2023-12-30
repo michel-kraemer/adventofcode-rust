@@ -58,7 +58,7 @@ fn main() {
     grid.iter().for_each(|r| {
         println!(
             "{}",
-            String::from_iter(r.iter().map(|b| if *b { '#' } else { '.' }))
+            String::from_iter(r.iter().map(|b| if *b { '█' } else { ' ' }))
         )
     });
 }
