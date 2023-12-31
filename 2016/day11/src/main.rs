@@ -51,9 +51,83 @@ fn is_valid(s: &State) -> bool {
 
 fn key(s: &State) -> u64 {
     let mut h = DefaultHasher::new();
-    s.floors.hash(&mut h);
+
+    // slow: consider each configuration individually
+    // s.floors.hash(&mut h);
+
+    // VERY fast: only consider how many generators and microchips we have at
+    // each level. See the following reddit comment:
+    // https://www.reddit.com/r/adventofcode/comments/5hoia9/comment/db1v1ws/
+    for f in &s.floors {
+        let mut generators = 0;
+        let mut microchips = 0;
+        for j in f.chunks(2) {
+            if j[0] {
+                generators += 1;
+            }
+            if j[1] {
+                microchips += 1;
+            }
+        }
+        generators.hash(&mut h);
+        microchips.hash(&mut h);
+    }
+
     s.elevator.hash(&mut h);
     h.finish()
+}
+
+fn move_one_item(
+    s: &State,
+    to_floor: usize,
+    seen: &mut HashSet<u64>,
+    queue: &mut BinaryHeap<Reverse<State>>,
+) {
+    for i in 0..s.floors[s.elevator].len() {
+        if !s.floors[s.elevator][i] {
+            continue;
+        }
+        let mut ns = s.clone();
+        ns.steps += 1;
+        ns.floors[ns.elevator][i] = false;
+        ns.elevator = to_floor;
+        ns.floors[ns.elevator][i] = true;
+        let ns_key = key(&ns);
+        if is_valid(&ns) && !seen.contains(&ns_key) {
+            seen.insert(ns_key);
+            queue.push(Reverse(ns));
+        }
+    }
+}
+
+fn move_two_items(
+    s: &State,
+    to_floor: usize,
+    seen: &mut HashSet<u64>,
+    queue: &mut BinaryHeap<Reverse<State>>,
+) {
+    for i in 0..s.floors[s.elevator].len() {
+        if !s.floors[s.elevator][i] {
+            continue;
+        }
+        for j in i + 1..s.floors[s.elevator].len() {
+            if !s.floors[s.elevator][j] {
+                continue;
+            }
+            let mut ns = s.clone();
+            ns.steps += 1;
+            ns.floors[ns.elevator][i] = false;
+            ns.floors[ns.elevator][j] = false;
+            ns.elevator = to_floor;
+            ns.floors[ns.elevator][i] = true;
+            ns.floors[ns.elevator][j] = true;
+            let ns_key = key(&ns);
+            if is_valid(&ns) && !seen.contains(&ns_key) {
+                seen.insert(ns_key);
+                queue.push(Reverse(ns));
+            }
+        }
+    }
 }
 
 fn main() {
@@ -134,53 +208,13 @@ fn main() {
                 break;
             }
 
-            for up in [true, false] {
-                let next = if up { s.elevator + 1 } else { s.elevator - 1 };
-                if next < s.floors.len() {
-                    for i in 0..s.floors[s.elevator].len() {
-                        if !s.floors[s.elevator][i] {
-                            continue;
-                        }
-                        let mut ns = s.clone();
-                        ns.steps += 1;
-                        ns.floors[ns.elevator][i] = false;
-                        ns.elevator = next;
-                        ns.floors[ns.elevator][i] = true;
-                        let ns_key = key(&ns);
-                        if !seen.contains(&ns_key) && is_valid(&ns) {
-                            seen.insert(ns_key);
-                            queue.push(Reverse(ns));
-                        }
-                    }
-                }
+            if s.elevator < s.floors.len() - 1 {
+                move_one_item(&s, s.elevator + 1, &mut seen, &mut queue);
+                move_two_items(&s, s.elevator + 1, &mut seen, &mut queue);
             }
-
-            for up in [true, false] {
-                let next = if up { s.elevator + 1 } else { s.elevator - 1 };
-                if next < s.floors.len() {
-                    for i in 0..s.floors[s.elevator].len() {
-                        if !s.floors[s.elevator][i] {
-                            continue;
-                        }
-                        for j in i + 1..s.floors[s.elevator].len() {
-                            if !s.floors[s.elevator][j] {
-                                continue;
-                            }
-                            let mut ns = s.clone();
-                            ns.steps += 1;
-                            ns.floors[ns.elevator][i] = false;
-                            ns.floors[ns.elevator][j] = false;
-                            ns.elevator = next;
-                            ns.floors[ns.elevator][i] = true;
-                            ns.floors[ns.elevator][j] = true;
-                            let ns_key = key(&ns);
-                            if !seen.contains(&ns_key) && is_valid(&ns) {
-                                seen.insert(ns_key);
-                                queue.push(Reverse(ns));
-                            }
-                        }
-                    }
-                }
+            if s.elevator > 0 {
+                move_one_item(&s, s.elevator - 1, &mut seen, &mut queue);
+                move_two_items(&s, s.elevator - 1, &mut seen, &mut queue);
             }
         }
 
