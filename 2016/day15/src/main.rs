@@ -41,7 +41,7 @@ fn main() {
         let r = discs.iter().map(|d| d.0).collect::<Vec<_>>();
 
         // Chinese Remainder theorem:
-        // 1. multiple all remainders (i.e. disc sizes)
+        // 1. multiply all remainders (i.e. disc sizes)
         let n = r.iter().copied().reduce(|a, b| a * b).unwrap();
 
         // 2. divide this product by the disc sizes
