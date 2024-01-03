@@ -9,14 +9,9 @@ enum Instruction {
     Tgl,
 }
 
-fn reg(registers: &[i32], n: &str) -> i32 {
-    registers[(n.as_bytes()[0] - b'a') as usize]
-}
-
-fn reg_mut<'a>(registers: &'a mut [i32], n: &str) -> &'a mut i32 {
-    registers
-        .get_mut((n.as_bytes()[0] - b'a') as usize)
-        .unwrap()
+enum Param {
+    Reg(usize),
+    Num(i32),
 }
 
 fn main() {
@@ -26,8 +21,8 @@ fn main() {
         let mut instructions = input
             .lines()
             .map(|l| {
-                let mut p = l.split(' ');
-                let i = match p.next().unwrap() {
+                let mut parts = l.split(' ');
+                let i = match parts.next().unwrap() {
                     "cpy" => Instruction::Cpy,
                     "inc" => Instruction::Inc,
                     "dec" => Instruction::Dec,
@@ -35,7 +30,15 @@ fn main() {
                     "tgl" => Instruction::Tgl,
                     _ => unreachable!(),
                 };
-                let params = p.collect::<Vec<_>>();
+                let params = parts
+                    .map(|p| {
+                        if let Ok(n) = p.parse::<i32>() {
+                            Param::Num(n)
+                        } else {
+                            Param::Reg((p.as_bytes()[0] - b'a') as usize)
+                        }
+                    })
+                    .collect::<Vec<_>>();
                 (i, params)
             })
             .collect::<Vec<_>>();
@@ -53,42 +56,51 @@ fn main() {
             let (i, params) = &instructions[pointer];
             match i {
                 Instruction::Cpy => {
-                    let v = if let Ok(n) = params[0].parse::<i32>() {
-                        n
-                    } else {
-                        reg(&registers, params[0])
+                    let v = match params[0] {
+                        Param::Num(n) => n,
+                        Param::Reg(r) => registers[r],
                     };
-                    *reg_mut(&mut registers, params[1]) = v;
+                    if let Param::Reg(r) = params[1] {
+                        registers[r] = v;
+                    }
                 }
-                Instruction::Inc => *reg_mut(&mut registers, params[0]) += 1,
-                Instruction::Dec => *reg_mut(&mut registers, params[0]) -= 1,
+                Instruction::Inc => {
+                    let Param::Reg(r) = params[0] else { unreachable!() };
+                    registers[r] += 1;
+                }
+                Instruction::Dec => {
+                    let Param::Reg(r) = params[0] else { unreachable!() };
+                    registers[r] -= 1;
+                }
                 Instruction::Jnz => {
-                    let v = if let Ok(n) = params[0].parse::<i32>() {
-                        n
-                    } else {
-                        reg(&registers, params[0])
+                    let v = match params[0] {
+                        Param::Num(n) => n,
+                        Param::Reg(r) => registers[r],
                     };
                     if v != 0 {
-                        let d = if let Ok(n) = params[1].parse::<i32>() {
-                            n
-                        } else {
-                            reg(&registers, params[1])
+                        let d = match params[1] {
+                            Param::Num(n) => n,
+                            Param::Reg(r) => registers[r],
                         };
                         if d == -2
                             && pointer > 1
                             && instructions[pointer - 2].0 == Instruction::Inc
                             && instructions[pointer - 1].0 == Instruction::Dec
                         {
-                            *reg_mut(&mut registers, instructions[pointer - 2].1[0]) += v;
-                            *reg_mut(&mut registers, instructions[pointer - 1].1[0]) -= v;
+                            let Param::Reg(r2) = instructions[pointer - 2].1[0] else { unreachable!() };
+                            let Param::Reg(r1) = instructions[pointer - 1].1[0] else { unreachable!() };
+                            registers[r2] += v;
+                            registers[r1] -= v;
                             pointer += 1;
                         } else if d == -2
                             && pointer > 1
                             && instructions[pointer - 2].0 == Instruction::Dec
                             && instructions[pointer - 1].0 == Instruction::Inc
                         {
-                            *reg_mut(&mut registers, instructions[pointer - 2].1[0]) -= v;
-                            *reg_mut(&mut registers, instructions[pointer - 1].1[0]) += v;
+                            let Param::Reg(r2) = instructions[pointer - 2].1[0] else { unreachable!() };
+                            let Param::Reg(r1) = instructions[pointer - 1].1[0] else { unreachable!() };
+                            registers[r2] -= v;
+                            registers[r1] += v;
                             pointer += 1;
                         } else {
                             pointer = (pointer as i32 + d) as usize;
@@ -97,10 +109,9 @@ fn main() {
                     }
                 }
                 Instruction::Tgl => {
-                    let v = if let Ok(n) = params[0].parse::<i32>() {
-                        n
-                    } else {
-                        reg(&registers, params[0])
+                    let v = match params[0] {
+                        Param::Num(n) => n,
+                        Param::Reg(r) => registers[r],
                     };
                     let j = (pointer as i32 + v) as usize;
                     if j < instructions.len() {
