@@ -4,56 +4,44 @@ fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
     let input = input.trim().parse::<usize>().unwrap();
 
-    // part 1
-    for i in (1..usize::MAX).step_by(2) {
-        if i * i >= input {
-            let s = (i - 2) * (i - 2) + 1;
-            let d = ((input - s) % (i - 1)).abs_diff(i / 2 - 1);
-            println!("{}", d + i / 2);
-            break;
-        }
-    }
-
-    // part 2
-    let mut grid = HashMap::new();
-
-    let mut x = 0i32;
-    let mut y = 0i32;
-    grid.insert((x, y), 1);
-    x += 1;
-    grid.insert((x, y), 1);
-    y -= 1;
-    let mut dir_x = 0i32;
-    let mut dir_y = -1i32;
-
-    for s in 3usize.. {
-        let mut sum = 0;
-        for ny in y - 1..=y + 1 {
-            for nx in x - 1..=x + 1 {
-                sum += grid.get(&(nx, ny)).unwrap_or(&0);
-            }
-        }
-        grid.insert((x, y), sum);
-
-        if sum > input {
-            println!("{}", sum);
-            break;
-        }
-
-        for i in (1..).step_by(2) {
-            if i * i >= s {
-                let t = (i - 2) * (i - 2) + 1;
-                let d = ((s - t) % (i - 1)).abs_diff(i / 2 - 1);
-                if s != i * i && (s == t || d == i / 2) {
-                    let t = dir_x;
-                    dir_x = dir_y;
-                    dir_y = -t;
+    for part1 in [true, false] {
+        let mut grid = HashMap::new();
+        grid.insert((0, 0), 1);
+        let mut w = 1;
+        let mut s = 2;
+        let mut result = 0;
+        'outer: while s <= input {
+            let mut x: i32 = w / 2;
+            let mut y: i32 = w / 2;
+            for dir in [(0, -1), (-1, 0), (0, 1), (1, 0)] {
+                for _ in 0..w - 1 {
+                    x += dir.0;
+                    y += dir.1;
+                    if part1 {
+                        grid.insert((x, y), s);
+                        if s == input {
+                            result = x.abs() + y.abs();
+                            break 'outer;
+                        }
+                    } else {
+                        let mut sum = 0;
+                        for ny in y - 1..=y + 1 {
+                            for nx in x - 1..=x + 1 {
+                                sum += grid.get(&(nx, ny)).unwrap_or(&0);
+                            }
+                        }
+                        grid.insert((x, y), sum);
+                        if sum > input {
+                            result = sum as i32;
+                            break 'outer;
+                        }
+                    }
+                    s += 1;
                 }
-                break;
             }
+            w += 2;
         }
 
-        x += dir_x;
-        y += dir_y;
+        println!("{}", result);
     }
 }
