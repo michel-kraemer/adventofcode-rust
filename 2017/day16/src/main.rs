@@ -40,10 +40,7 @@ fn main() {
             for m in &moves {
                 match m {
                     Move::S(len) => {
-                        let (a, b) = programs.split_at(programs.len() - len);
-                        let mut nm = Vec::from_iter(b.iter().copied());
-                        nm.extend(a);
-                        programs = nm;
+                        programs.rotate_right(*len);
                     }
                     Move::X(a, b) => {
                         programs.swap(*a, *b);
