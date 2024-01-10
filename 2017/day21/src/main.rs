@@ -10,6 +10,20 @@ fn transpose(pattern: &Vec<Vec<char>>) -> Vec<Vec<char>> {
     new_pattern
 }
 
+fn hash(p: &[Vec<char>], x: usize, y: usize, n: usize) -> u32 {
+    let mut r = if n == 3 { 0 } else { 1 << 16 };
+    let mut i = 0;
+    for row in 0..n {
+        for col in 0..n {
+            if p[row + y][col + x] == '#' {
+                r |= 1 << i;
+            }
+            i += 1;
+        }
+    }
+    r
+}
+
 #[allow(clippy::needless_range_loop)]
 fn main() {
     for part1 in [true, false] {
@@ -28,33 +42,41 @@ fn main() {
                 )
             })
             .flat_map(|p| {
-                let r1 =
+                let p2 =
                     p.0.iter()
                         .map(|l| l.iter().rev().copied().collect::<Vec<_>>())
                         .collect::<Vec<_>>();
-                let r2 = p.0.iter().rev().map(|c| c.to_vec()).collect::<Vec<_>>();
-                let r3 = r2
+                let p3 = p.0.iter().rev().map(|c| c.to_vec()).collect::<Vec<_>>();
+                let p4 = p3
                     .iter()
                     .map(|l| l.iter().rev().copied().collect::<Vec<_>>())
                     .collect::<Vec<_>>();
-                let r4 = transpose(&p.0);
-                let r5 = transpose(&r1);
-                let r6 = transpose(&r2);
-                let r7 = transpose(&r3);
+                let p5 = transpose(&p.0);
+                let p6 = transpose(&p2);
+                let p7 = transpose(&p3);
+                let p8 = transpose(&p4);
+
+                let h1 = hash(&p.0, 0, 0, p.0.len());
+                let h2 = hash(&p2, 0, 0, p2.len());
+                let h3 = hash(&p3, 0, 0, p3.len());
+                let h4 = hash(&p4, 0, 0, p4.len());
+                let h5 = hash(&p5, 0, 0, p5.len());
+                let h6 = hash(&p6, 0, 0, p6.len());
+                let h7 = hash(&p7, 0, 0, p7.len());
+                let h8 = hash(&p8, 0, 0, p8.len());
+
                 vec![
-                    (p.0, p.1.clone()),
-                    (r1, p.1.clone()),
-                    (r2, p.1.clone()),
-                    (r3, p.1.clone()),
-                    (r4, p.1.clone()),
-                    (r5, p.1.clone()),
-                    (r6, p.1.clone()),
-                    (r7, p.1),
+                    (h1, p.1.clone()),
+                    (h2, p.1.clone()),
+                    (h3, p.1.clone()),
+                    (h4, p.1.clone()),
+                    (h5, p.1.clone()),
+                    (h6, p.1.clone()),
+                    (h7, p.1.clone()),
+                    (h8, p.1),
                 ]
             })
-            .collect::<HashMap<_, _>>() // remove duplicates
-            .into_iter()
-            .collect::<Vec<_>>();
+            .collect::<HashMap<_, _>>();
 
         let mut grid = vec![
             vec!['.', '#', '.'],
@@ -68,26 +90,11 @@ fn main() {
             let mut ng = vec![vec!['.'; grid[0].len() / n * (n + 1)]; grid.len() / n * (n + 1)];
             for r in (0..grid.len()).step_by(n) {
                 for c in (0..grid.len()).step_by(n) {
-                    for rule in &rules {
-                        if rule.0.len() != n {
-                            continue;
-                        }
-                        let mut found = true;
-                        for y in 0..n {
-                            for x in 0..n {
-                                if grid[r + y][c + x] != rule.0[y][x] {
-                                    found = false;
-                                    break;
-                                }
-                            }
-                        }
-                        if found {
-                            for y in 0..n + 1 {
-                                for x in 0..n + 1 {
-                                    ng[r / n * (n + 1) + y][c / n * (n + 1) + x] = rule.1[y][x];
-                                }
-                            }
-                            break;
+                    let h = hash(&grid, c, r, n);
+                    let rule = &rules[&h];
+                    for y in 0..n + 1 {
+                        for x in 0..n + 1 {
+                            ng[r / n * (n + 1) + y][c / n * (n + 1) + x] = rule[y][x];
                         }
                     }
                 }
