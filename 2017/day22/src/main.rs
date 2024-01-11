@@ -30,32 +30,28 @@ fn main() {
 
         let mut infects = 0;
         for _ in 0..(if part1 { 10_000 } else { 10_000_000 }) {
-            let s = map.get(&virus).unwrap_or(&State::Clean);
+            let s = map.entry(virus).or_insert(State::Clean);
             match s {
                 State::Clean => {
                     dir = (dir.1, -dir.0);
-                    if part1 {
+                    *s = if part1 {
                         infects += 1;
-                        map.insert(virus, State::Infected);
+                        State::Infected
                     } else {
-                        map.insert(virus, State::Weakened);
-                    }
+                        State::Weakened
+                    };
                 }
                 State::Weakened => {
                     infects += 1;
-                    map.insert(virus, State::Infected);
+                    *s = State::Infected;
                 }
                 State::Infected => {
                     dir = (-dir.1, dir.0);
-                    if part1 {
-                        map.insert(virus, State::Clean);
-                    } else {
-                        map.insert(virus, State::Flagged);
-                    }
+                    *s = if part1 { State::Clean } else { State::Flagged };
                 }
                 State::Flagged => {
                     dir = (-dir.0, -dir.1);
-                    map.remove(&virus);
+                    *s = State::Clean;
                 }
             }
             virus.0 += dir.0;
