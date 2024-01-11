@@ -1,65 +1,76 @@
-use std::{
-    collections::{HashSet, VecDeque},
-    fs,
-};
+use std::fs;
 
-struct State {
+fn dfs(
+    bridges: &mut Vec<(usize, usize, bool)>,
     e: usize,
     strength: usize,
-    seen: HashSet<(usize, usize)>,
+    length: usize,
+    max_strength: &mut usize,
+    longest: &mut usize,
+    longest_max: &mut usize,
+) {
+    if strength > *max_strength {
+        *max_strength = strength;
+    }
+
+    if length > *longest {
+        *longest = length;
+        *longest_max = strength;
+    } else if length == *longest && strength > *longest_max {
+        *longest_max = strength;
+    }
+
+    for i in 0..bridges.len() {
+        if !bridges[i].2 && (e == bridges[i].0 || e == bridges[i].1) {
+            bridges[i].2 = true;
+            dfs(
+                bridges,
+                if e == bridges[i].0 {
+                    bridges[i].1
+                } else {
+                    bridges[i].0
+                },
+                strength + bridges[i].0 + bridges[i].1,
+                length + 1,
+                max_strength,
+                longest,
+                longest_max,
+            );
+            bridges[i].2 = false;
+        }
+    }
 }
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
-    let bridges = input
+    let mut bridges = input
         .lines()
         .map(|l| {
             let p = l.split_once('/').unwrap();
-            (p.0.parse::<usize>().unwrap(), p.1.parse::<usize>().unwrap())
+            (
+                p.0.parse::<usize>().unwrap(),
+                p.1.parse::<usize>().unwrap(),
+                false,
+            )
         })
         .collect::<Vec<_>>();
 
-    let mut queue = VecDeque::new();
-    queue.push_back(State {
-        e: 0,
-        strength: 0,
-        seen: HashSet::new(),
-    });
-
-    let mut max = 0;
+    let mut max_strength = 0;
     let mut longest = 0;
     let mut longest_max = 0;
 
-    while !queue.is_empty() {
-        let s = queue.pop_back().unwrap();
-
-        if s.strength > max {
-            max = s.strength;
-        }
-
-        if s.seen.len() > longest {
-            longest = s.seen.len();
-            longest_max = s.strength;
-        } else if s.seen.len() == longest && s.strength > longest_max {
-            longest_max = s.strength;
-        }
-
-        for b in &bridges {
-            if (b.0 == s.e || b.1 == s.e) && !s.seen.contains(b) {
-                let mut ns = s.seen.clone();
-                ns.insert(*b);
-                let s = State {
-                    e: if s.e == b.1 { b.0 } else { b.1 },
-                    strength: s.strength + b.0 + b.1,
-                    seen: ns,
-                };
-                queue.push_back(s);
-            }
-        }
-    }
+    dfs(
+        &mut bridges,
+        0,
+        0,
+        0,
+        &mut max_strength,
+        &mut longest,
+        &mut longest_max,
+    );
 
     // part 1
-    println!("{}", max);
+    println!("{}", max_strength);
 
     // part 2
     println!("{}", longest_max);
