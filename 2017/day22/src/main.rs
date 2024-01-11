@@ -7,7 +7,6 @@ enum State {
     Flagged,
 }
 
-#[allow(clippy::needless_range_loop)]
 fn main() {
     for part1 in [true, false] {
         let input = fs::read_to_string("input.txt").expect("Could not read file");
