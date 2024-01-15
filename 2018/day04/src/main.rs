@@ -1,7 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
     fs,
-    ops::Range,
 };
 
 enum Event {
@@ -18,6 +17,7 @@ fn main() {
     lines.sort();
 
     // parse
+    let mut all_guards = HashSet::new();
     let events = lines
         .into_iter()
         .map(|l| {
@@ -27,7 +27,9 @@ fn main() {
             let minute = minute.parse::<usize>().unwrap();
 
             if p[3].starts_with('#') {
-                Event::Guard(p[3][1..].parse::<usize>().unwrap())
+                let g = p[3][1..].parse::<usize>().unwrap();
+                all_guards.insert(g);
+                Event::Guard(g)
             } else if p[3] == "asleep" {
                 Event::Asleep(minute)
             } else {
@@ -36,12 +38,13 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
+    let mut hours = all_guards
+        .iter()
+        .map(|&g| (g, vec![0; 60]))
+        .collect::<HashMap<_, _>>();
+
     let mut current_guard = 0;
     let mut start_sleep = 0;
-    let mut guard_to_cumulated_sleep: HashMap<usize, usize> = HashMap::new();
-    let mut guard_to_ranges: HashMap<usize, Vec<Range<usize>>> = HashMap::new();
-    let mut all_guards = HashSet::new();
-
     for e in events {
         match e {
             Event::Guard(g) => {
@@ -50,59 +53,40 @@ fn main() {
             }
             Event::Asleep(minute) => start_sleep = minute,
             Event::Wakeup(minute) => {
-                *guard_to_cumulated_sleep.entry(current_guard).or_default() += minute - start_sleep;
-                guard_to_ranges
-                    .entry(current_guard)
-                    .or_default()
-                    .push(start_sleep..minute);
+                if let Some(h) = hours.get_mut(&current_guard) {
+                    (start_sleep..minute).for_each(|i| {
+                        h[i] += 1;
+                    });
+                }
             }
         }
     }
 
     // part 1
-    let guard_with_max_sleep = guard_to_cumulated_sleep
-        .into_iter()
+    let guard_with_max_sleep = hours
+        .iter()
+        .map(|(g, h)| (*g, h.iter().sum::<usize>()))
         .max_by_key(|g| g.1)
         .unwrap()
         .0;
-    let ranges_of_guard = guard_to_ranges.get(&guard_with_max_sleep).unwrap();
-    let mut max_times_asleep = 0;
-    let mut max_minute = 0;
-    for i in 0..60 {
-        let mut sum = 0;
-        for r in ranges_of_guard {
-            if i >= r.start && i < r.end {
-                sum += 1;
-            }
-        }
-        if sum > max_times_asleep {
-            max_times_asleep = sum;
-            max_minute = i;
-        }
-    }
-    println!("{}", guard_with_max_sleep * max_minute);
+    let max_minute_of_guard_with_max_sleep = hours
+        .get(&guard_with_max_sleep)
+        .unwrap()
+        .iter()
+        .enumerate()
+        .max_by_key(|h| *h.1)
+        .unwrap()
+        .0;
+    println!(
+        "{}",
+        guard_with_max_sleep * max_minute_of_guard_with_max_sleep
+    );
 
     // part 2
-    max_times_asleep = 0;
-    max_minute = 0;
-    let mut max_guard = 0;
-    for i in 0..60 {
-        for g in &all_guards {
-            let mut sum = 0;
-            if let Some(gr) = guard_to_ranges.get(g) {
-                for r in gr {
-                    if i >= r.start && i < r.end {
-                        sum += 1;
-                    }
-                }
-                if sum > max_times_asleep {
-                    max_times_asleep = sum;
-                    max_minute = i;
-                    max_guard = *g;
-                }
-            }
-        }
-    }
-
-    println!("{}", max_guard * max_minute);
+    let guard_most_asleep = hours
+        .iter()
+        .map(|(g, h)| (*g, h.iter().enumerate().max_by_key(|v| v.1).unwrap()))
+        .max_by_key(|g| g.1 .1)
+        .unwrap();
+    println!("{}", guard_most_asleep.0 * guard_most_asleep.1 .0);
 }
