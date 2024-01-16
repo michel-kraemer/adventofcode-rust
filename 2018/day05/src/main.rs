@@ -1,45 +1,19 @@
-use std::fs;
+use std::{collections::VecDeque, fs};
 
-// If you wonder why this is so complicated, I've had some fun optimizing the
-// algorithm :-) Look into the Git history to find a simpler version that
-// also works.
-fn collapse(polymer: &[u8], marked: &mut [bool]) -> usize {
-    let mut i = 0;
-    let mut j = 1;
-    let mut removed = 0;
-    let mut lm = 0;
-    while j < polymer.len() {
-        if (polymer[i].to_ascii_lowercase() == polymer[j].to_ascii_lowercase())
-            && (polymer[i].is_ascii_lowercase() != polymer[j].is_ascii_lowercase())
+fn collapse<F>(polymer: &[u8], result: &mut VecDeque<u8>, f: F)
+where
+    F: Fn(&&u8) -> bool,
+{
+    for b in polymer.iter().filter(f) {
+        if !result.is_empty()
+            && (b.to_ascii_lowercase() == result.back().unwrap().to_ascii_lowercase())
+            && (b.is_ascii_lowercase() != result.back().unwrap().is_ascii_lowercase())
         {
-            removed += 2;
-            marked[i] = true;
-            marked[j] = true;
-            if i == lm {
-                i = j + 1;
-                j += 2;
-                lm = i;
-            } else {
-                while i > lm {
-                    i -= 1;
-                    if !marked[i] {
-                        break;
-                    }
-                }
-                if i == lm && marked[i] {
-                    i = j + 1;
-                    j += 2;
-                    lm = i;
-                } else {
-                    j += 1;
-                }
-            }
+            result.pop_back();
         } else {
-            i = j;
-            j += 1;
+            result.push_back(*b);
         }
     }
-    removed
 }
 
 fn main() {
@@ -49,27 +23,20 @@ fn main() {
         .bytes()
         .collect::<Vec<_>>();
 
-    let mut marked = vec![false; polymer.len()];
+    let mut result = VecDeque::with_capacity(polymer.len());
 
     // part 1
-    let part1_removed = collapse(&polymer, &mut marked);
-    println!("{}", polymer.len() - part1_removed);
+    collapse(&polymer, &mut result, |_| true);
+    println!("{}", result.len());
 
     // part 2
     let mut min = usize::MAX;
     for u in b'a'..=b'z' {
-        marked.fill(false);
-        let part2_polymer = polymer
-            .iter()
-            .filter(|&c| c.to_ascii_lowercase() != u.to_ascii_lowercase())
-            .copied()
-            .collect::<Vec<_>>();
-
-        let part2_removed = collapse(&part2_polymer, &mut marked);
-
-        if part2_polymer.len() - part2_removed < min {
-            min = part2_polymer.len() - part2_removed;
-        }
+        result.clear();
+        collapse(&polymer, &mut result, |c| {
+            c.to_ascii_lowercase() != u.to_ascii_lowercase()
+        });
+        min = min.min(result.len());
     }
     println!("{}", min);
 }
