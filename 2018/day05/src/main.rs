@@ -1,20 +1,16 @@
 use std::fs;
 
 fn collapse(polymer: &mut Vec<u8>) {
-    loop {
-        let mut found = false;
-        for i in 0..polymer.len() - 1 {
-            if (polymer[i].to_ascii_lowercase() == polymer[i + 1].to_ascii_lowercase())
-                && (polymer[i].is_ascii_lowercase() != polymer[i + 1].is_ascii_lowercase())
-            {
-                polymer.remove(i);
-                polymer.remove(i);
-                found = true;
-                break;
-            }
-        }
-        if !found {
-            break;
+    let mut i = 0;
+    while i < polymer.len() - 1 {
+        if (polymer[i].to_ascii_lowercase() == polymer[i + 1].to_ascii_lowercase())
+            && (polymer[i].is_ascii_lowercase() != polymer[i + 1].is_ascii_lowercase())
+        {
+            polymer.remove(i);
+            polymer.remove(i);
+            i = i.saturating_sub(1);
+        } else {
+            i += 1;
         }
     }
 }
