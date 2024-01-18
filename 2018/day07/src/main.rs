@@ -20,6 +20,8 @@ fn main() {
             })
             .collect::<Vec<_>>();
 
+        let num_steps = all_steps.len();
+
         // initialize dependencies for all known steps
         let mut deps = all_steps
             .into_iter()
@@ -36,8 +38,6 @@ fn main() {
         deps.sort_by_key(|d| d.0);
 
         let mut result = String::new();
-        let mut finished = HashSet::new();
-        let mut in_work = HashSet::new();
         let mut workers: Vec<Option<(char, usize)>> = vec![None; if part1 { 1 } else { 4 }];
         let mut time = 0;
         loop {
@@ -46,8 +46,6 @@ fn main() {
                 if let Some((step, remaining)) = w {
                     *remaining -= 1;
                     if *remaining == 0 {
-                        in_work.remove(step);
-                        finished.insert(*step);
                         result.push(*step);
                         *w = None;
                     }
@@ -56,25 +54,18 @@ fn main() {
 
             // for every idle worker, find a step to work on
             for w in workers.iter_mut().filter(|w| w.is_none()) {
-                for d in &deps {
-                    if in_work.contains(&d.0) {
-                        // this step is already in work
-                        continue;
-                    }
-                    if finished.contains(&d.0) {
-                        // this step is already finished
-                        continue;
-                    }
-                    if d.1.iter().all(|d| finished.contains(d)) {
+                for i in 0..deps.len() {
+                    let d = &deps[i];
+                    if d.1.iter().all(|d| result.contains(*d)) {
                         // we found a new item to work on
-                        in_work.insert(d.0);
                         *w = Some((d.0, (d.0 as u8 - b'A') as usize + 1 + 60));
+                        deps.remove(i);
                         break;
                     }
                 }
             }
 
-            if finished.len() == deps.len() {
+            if result.len() == num_steps {
                 // all items are finished
                 break;
             }
