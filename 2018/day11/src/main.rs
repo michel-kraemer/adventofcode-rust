@@ -36,18 +36,18 @@ fn main() {
             .parse::<i64>()
             .unwrap();
 
-        let w = 300;
+        const W: usize = 300;
 
-        let mut grid = vec![0i64; w * w];
+        let mut grid = [0i64; W * W];
 
         let mut max_power = i64::MIN;
         let mut coords = (0, 0, 0);
 
-        for y in 1..=w {
-            for x in 1..=w {
+        for y in 1..=W {
+            for x in 1..=W {
                 let rack_id = (x as i64) + 10;
                 let power = ((rack_id * (y as i64) + input) * rack_id) / 100 % 10 - 5;
-                grid[(y - 1) * w + x - 1] = power;
+                grid[(y - 1) * W + x - 1] = power;
                 if power > max_power {
                     max_power = power;
                     coords = (x, y, 1);
@@ -56,14 +56,14 @@ fn main() {
         }
 
         if part1 {
-            let mut prev_grid = grid.clone();
-            calc_max(&grid, &mut prev_grid, 2, w);
-            let (_, coords) = calc_max(&grid, &mut prev_grid, 3, w);
+            let mut prev_grid = grid;
+            calc_max(&grid, &mut prev_grid, 2, W);
+            let (_, coords) = calc_max(&grid, &mut prev_grid, 3, W);
             println!("{},{}", coords.0, coords.1);
         } else {
-            let mut prev_grid = grid.clone();
-            for s in 2..=w {
-                let (mp, c) = calc_max(&grid, &mut prev_grid, s, w);
+            let mut prev_grid = grid;
+            for s in 2..=W {
+                let (mp, c) = calc_max(&grid, &mut prev_grid, s, W);
                 if mp > max_power {
                     max_power = mp;
                     coords = c;
