@@ -315,3 +315,188 @@ fn main() {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::*;
+
+    trait IntoGrid {
+        fn into_grid(self) -> Vec<Vec<char>>;
+    }
+
+    impl IntoGrid for &str {
+        fn into_grid(self) -> Vec<Vec<char>> {
+            self.lines()
+                .map(|l| l.chars().collect::<Vec<_>>())
+                .collect::<Vec<_>>()
+        }
+    }
+
+    #[test]
+    fn sample_combat1_part1() {
+        let grid = r"#######
+#.G...#
+#...EG#
+#.#.#G#
+#..G#E#
+#.....#
+#######";
+
+        let outcome = play(&grid.into_grid(), 3, true);
+        assert_eq!(Some(27730), outcome);
+    }
+
+    #[test]
+    fn sample_combat2_part1() {
+        let grid = r"#######
+#G..#E#
+#E#E.E#
+#G.##.#
+#...#E#
+#...E.#
+#######";
+
+        let outcome = play(&grid.into_grid(), 3, true);
+        assert_eq!(Some(36334), outcome);
+    }
+
+    #[test]
+    fn sample_combat3_part1() {
+        let grid = r"#######
+#E..EG#
+#.#G.E#
+#E.##E#
+#G..#.#
+#..E#.#
+#######";
+
+        let outcome = play(&grid.into_grid(), 3, true);
+        assert_eq!(Some(39514), outcome);
+    }
+
+    #[test]
+    fn sample_combat4_part1() {
+        let grid = r"#######
+#E.G#.#
+#.#G..#
+#G.#.G#
+#G..#.#
+#...E.#
+#######";
+
+        let outcome = play(&grid.into_grid(), 3, true);
+        assert_eq!(Some(27755), outcome);
+    }
+
+    #[test]
+    fn sample_combat5_part1() {
+        let grid = r"#######
+#.E...#
+#.#..G#
+#.###.#
+#E#G#G#
+#...#G#
+#######";
+
+        let outcome = play(&grid.into_grid(), 3, true);
+        assert_eq!(Some(28944), outcome);
+    }
+
+    #[test]
+    fn sample_combat6_part1() {
+        let grid = r"#########
+#G......#
+#.E.#...#
+#..##..G#
+#...##..#
+#...#...#
+#.G...G.#
+#.....G.#
+#########";
+
+        let outcome = play(&grid.into_grid(), 3, true);
+        assert_eq!(Some(18740), outcome);
+    }
+
+    fn test_part2(grid: Vec<Vec<char>>, expected_attack_elf: i32, expected_outcome: i32) {
+        let mut attack_elf = 3;
+        let outcome;
+        loop {
+            attack_elf += 1;
+            if let Some(o) = play(&grid, attack_elf, false) {
+                outcome = o;
+                break;
+            }
+            assert!(attack_elf < expected_attack_elf);
+        }
+        assert_eq!(expected_attack_elf, attack_elf);
+        assert_eq!(expected_outcome, outcome);
+    }
+
+    #[test]
+    fn sample_combat1_part2() {
+        let grid = r"#######
+#.G...#
+#...EG#
+#.#.#G#
+#..G#E#
+#.....#
+#######";
+
+        test_part2(grid.into_grid(), 15, 4988);
+    }
+
+    #[test]
+    fn sample_combat2_part2() {
+        let grid = r"#######
+#E..EG#
+#.#G.E#
+#E.##E#
+#G..#.#
+#..E#.#
+#######";
+
+        test_part2(grid.into_grid(), 4, 31284);
+    }
+
+    #[test]
+    fn sample_combat3_part2() {
+        let grid = r"#######
+#E.G#.#
+#.#G..#
+#G.#.G#
+#G..#.#
+#...E.#
+#######";
+
+        test_part2(grid.into_grid(), 15, 3478);
+    }
+
+    #[test]
+    fn sample_combat4_part2() {
+        let grid = r"#######
+#.E...#
+#.#..G#
+#.###.#
+#E#G#G#
+#...#G#
+#######";
+
+        test_part2(grid.into_grid(), 12, 6474);
+    }
+
+    #[test]
+    fn sample_combat5_part2() {
+        let grid = r"#########
+#G......#
+#.E.#...#
+#..##..G#
+#...##..#
+#...#...#
+#.G...G.#
+#.....G.#
+#########";
+
+        test_part2(grid.into_grid(), 34, 1140);
+    }
+}
