@@ -189,9 +189,14 @@ fn play(grid: &Vec<Vec<char>>, attack_elf: i32, part1: bool) -> Option<i32> {
     units.sort_unstable();
 
     let mut rounds = 0;
-    loop {
+    'outer: loop {
         let mut ui = 0;
         while ui < units.len() {
+            if units.iter().all(|u| u.tpe == units[0].tpe) {
+                // all enemies have been killed
+                break 'outer;
+            }
+
             // have we killed a unit with an index less than ui?
             let mut earlier_unit_killed = false;
 
@@ -259,12 +264,6 @@ fn play(grid: &Vec<Vec<char>>, attack_elf: i32, part1: bool) -> Option<i32> {
                     grid[e.y as usize][e.x as usize] = '.';
                     units.remove(ei);
                     earlier_unit_killed = ei < ui;
-
-                    let first_type = units[0].tpe;
-                    if units.iter().all(|u| u.tpe == first_type) {
-                        // Unit has killed the last enemy. End round early.
-                        break;
-                    }
                 }
             }
 
@@ -276,18 +275,7 @@ fn play(grid: &Vec<Vec<char>>, attack_elf: i32, part1: bool) -> Option<i32> {
         // make sure units take turns in reading order
         units.sort_unstable();
 
-        if ui < units.len() {
-            // Round ended early. We must only count full rounds, so quit here.
-            break;
-        }
-
         rounds += 1;
-
-        let first_type = units[0].tpe;
-        if units.iter().all(|u| u.tpe == first_type) {
-            // All enemies have been killed after this full round.
-            break;
-        }
     }
 
     Some(rounds * units.iter().map(|u| u.points).sum::<i32>())
