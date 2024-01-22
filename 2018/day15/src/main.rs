@@ -95,9 +95,17 @@ fn shortest_paths(ui: usize, units: &[Unit], grid: &[Vec<char>]) -> Vec<Shortest
         first_step_y: u.y,
     }));
 
+    let mut lowest_steps = usize::MAX;
+
     let mut result = Vec::new();
     while !queue.is_empty() {
         let s = queue.pop().unwrap().0;
+
+        if s.steps > lowest_steps {
+            // we won't find anything better
+            break;
+        }
+
         if s.steps > 0 {
             // We have moved. Check if we are next to an enemy.
             if can_attack(s.x, s.y, units[ui].tpe, grid) {
@@ -109,6 +117,8 @@ fn shortest_paths(ui: usize, units: &[Unit], grid: &[Vec<char>]) -> Vec<Shortest
                     first_step_x: s.first_step_x,
                     first_step_y: s.first_step_y,
                 });
+                lowest_steps = s.steps;
+                continue;
             }
         }
 
