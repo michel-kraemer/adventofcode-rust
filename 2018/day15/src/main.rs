@@ -1,8 +1,4 @@
-use std::{
-    cmp::Reverse,
-    collections::{BinaryHeap, HashSet},
-    fs,
-};
+use std::{cmp::Reverse, collections::BinaryHeap, fs};
 
 /// Type of a unit
 #[derive(PartialEq, Eq, Copy, Clone)]
@@ -87,9 +83,10 @@ struct ShortestPathResult {
 fn shortest_paths(ui: usize, units: &[Unit], grid: &[Vec<char>]) -> Vec<ShortestPathResult> {
     let u = &units[ui];
 
-    let mut seen: HashSet<(i32, i32)> = HashSet::new();
+    let w = grid[0].len();
+    let mut seen = vec![false; w * grid.len()];
     let mut queue = BinaryHeap::new();
-    seen.insert((u.x, u.y));
+    seen[u.y as usize * w + u.x as usize] = true;
     queue.push(Reverse(ShortestPathState {
         steps: 0,
         x: u.x,
@@ -103,8 +100,7 @@ fn shortest_paths(ui: usize, units: &[Unit], grid: &[Vec<char>]) -> Vec<Shortest
         let s = queue.pop().unwrap().0;
         if s.steps > 0 {
             // We have moved. Check if we are next to an enemy.
-            let enemies_to_attack = find_enemies_to_attack(s.x, s.y, units[ui].tpe, units);
-            if !enemies_to_attack.is_empty() {
+            if can_attack(s.x, s.y, units[ui].tpe, grid) {
                 // We are next to an enemy. This is a possible destination cell.
                 result.push(ShortestPathResult {
                     steps: s.steps,
@@ -120,8 +116,8 @@ fn shortest_paths(ui: usize, units: &[Unit], grid: &[Vec<char>]) -> Vec<Shortest
         for d in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
             let nx = s.x + d.0;
             let ny = s.y + d.1;
-            if !seen.contains(&(nx, ny)) {
-                seen.insert((nx, ny));
+            if !seen[ny as usize * w + nx as usize] {
+                seen[ny as usize * w + nx as usize] = true;
 
                 // save position of first step and don't change it later
                 let fx = if s.steps == 0 { nx } else { s.first_step_x };
@@ -145,6 +141,26 @@ fn shortest_paths(ui: usize, units: &[Unit], grid: &[Vec<char>]) -> Vec<Shortest
     }
 
     result
+}
+
+fn can_attack(ux: i32, uy: i32, utpe: UnitType, grid: &[Vec<char>]) -> bool {
+    let expected = match utpe {
+        UnitType::Elf => 'G',
+        UnitType::Goblin => 'E',
+    };
+    for d in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
+        let nx = ux + d.0;
+        let ny = uy + d.1;
+        if ny >= 0
+            && (ny as usize) < grid.len()
+            && nx >= 0
+            && (nx as usize) < grid[ny as usize].len()
+            && grid[ny as usize][nx as usize] == expected
+        {
+            return true;
+        }
+    }
+    false
 }
 
 /// Iterate through all given units and check if one of them could be attacked
