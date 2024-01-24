@@ -1,46 +1,65 @@
 use std::fs;
 
-fn drop(grid: &mut [Vec<char>], ix: usize, iy: usize) {
-    let x = ix;
-    let mut y = iy;
-    grid[y][x] = '|';
-    while y < grid.len() - 1 && grid[y + 1][x] != '#' && grid[y + 1][x] != '~' {
-        y += 1;
-        grid[y][x] = '|';
-    }
-    if y == grid.len() - 1 {
+fn drop(grid: &mut [Vec<char>], x: usize, mut y: usize) {
+    if grid[y][x] == '|' {
+        // we've already been here
         return;
     }
 
-    let mut left_x = x;
-    while left_x > 0 && grid[y][left_x - 1] != '#' && grid[y][left_x - 1] != '~' {
-        left_x -= 1;
-        grid[y][left_x] = '|';
-        if grid[y + 1][left_x] != '#' && grid[y + 1][left_x] != '~' {
-            drop(grid, left_x, y);
-            left_x = usize::MAX;
+    // find bottom
+    while y < grid.len() && grid[y][x] != '#' && grid[y][x] != '~' {
+        grid[y][x] = '|';
+        y += 1;
+    }
+    if y == grid.len() {
+        // we've reached the end of the grid
+        return;
+    }
+    y -= 1;
+
+    loop {
+        // find left border
+        let mut left_x = x;
+        while left_x > 0 && grid[y][left_x - 1] != '#' && grid[y][left_x - 1] != '~' {
+            left_x -= 1;
+            grid[y][left_x] = '|';
+            if grid[y + 1][left_x] != '#' && grid[y + 1][left_x] != '~' {
+                // overflow. drop down.
+                drop(grid, left_x, y + 1);
+                left_x = usize::MAX;
+                break;
+            }
+        }
+
+        // find right border
+        let mut right_x = x;
+        while right_x < grid[0].len() - 1
+            && grid[y][right_x + 1] != '#'
+            && grid[y][right_x + 1] != '~'
+        {
+            right_x += 1;
+            grid[y][right_x] = '|';
+            if grid[y + 1][right_x] != '#' && grid[y + 1][right_x] != '~' {
+                // overflow. drop down.
+                drop(grid, right_x, y + 1);
+                right_x = usize::MAX;
+                break;
+            }
+        }
+
+        if left_x == usize::MAX || right_x == usize::MAX {
+            // either the left or right has has overflown
             break;
         }
-    }
 
-    let mut right_x = x;
-    while right_x < grid[0].len() - 1 && grid[y][right_x + 1] != '#' && grid[y][right_x + 1] != '~'
-    {
-        right_x += 1;
-        grid[y][right_x] = '|';
-        if grid[y + 1][right_x] != '#' && grid[y + 1][right_x] != '~' {
-            drop(grid, right_x, y);
-            right_x = usize::MAX;
-            break;
+        // we found a left and right border - fill this row
+        for xi in left_x..=right_x {
+            grid[y][xi] = '~';
         }
-    }
 
-    if left_x != usize::MAX && right_x != usize::MAX {
-        if left_x != x {
-            grid[y][left_x] = '~';
-        } else {
-            grid[y][right_x] = '~';
-        }
+        // continue one row higher
+        y -= 1;
+        grid[y][x] = '|';
     }
 }
 
@@ -65,7 +84,7 @@ fn main() {
             let x2;
             let y1;
             let y2;
-            if a.chars().next().unwrap() == 'x' {
+            if a.starts_with('x') {
                 x1 = a1;
                 x2 = a1;
                 y1 = b1;
@@ -79,71 +98,42 @@ fn main() {
 
             min_y = min_y.min(y1);
             max_y = max_y.max(y2);
-            min_x = min_x.min(x1 - 1);
-            max_x = max_x.max(x2 + 1);
-            ((x1, x2), (y1, y2))
-        })
-        .collect::<Vec<_>>();
+            min_x = min_x.min(x1 - 1); // leave space
+            max_x = max_x.max(x2 + 1); // leave space
 
-    let coords = coords
-        .into_iter()
-        .map(|c| {
-            (
-                (c.0 .0 - min_x, c.0 .1 - min_x),
-                (c.1 .0 - min_y, c.1 .1 - min_y),
-            )
+            (x1, x2, y1, y2)
         })
         .collect::<Vec<_>>();
 
     let mut grid = vec![vec!['.'; max_x - min_x + 1]; max_y - min_y + 1];
 
-    for c in &coords {
-        for y in c.1 .0..=c.1 .1 {
-            for x in c.0 .0..=c.0 .1 {
-                grid[y][x] = '#';
+    for c in coords {
+        for y in c.2..=c.3 {
+            for x in c.0..=c.1 {
+                grid[y - min_y][x - min_x] = '#';
             }
         }
     }
 
-    grid.iter()
-        .for_each(|r| println!("{}", String::from_iter(r)));
-    println!("{} {} {} {}", min_x, min_y, max_x, max_y);
+    drop(&mut grid, 500 - min_x, 0);
 
-    let spring_x = 500 - min_x;
+    let mut water = 0;
+    let mut pipes = 0;
 
-    for n in 0..100000 {
-        drop(&mut grid, spring_x, 0);
-
-        // grid.iter()
-        //     .for_each(|r| println!("{}", String::from_iter(r)));
-        // println!("{} {} {} {}", min_x, min_y, max_x, max_y);
-        // println!();
-        let mut count = 0;
-        for y in 0..grid.len() {
-            for x in 0..grid[y].len() {
-                if grid[y][x] == '~' || grid[y][x] == '|' {
-                    count += 1;
-                }
+    #[allow(clippy::needless_range_loop)]
+    for y in 0..grid.len() {
+        for x in 0..grid[y].len() {
+            if grid[y][x] == '~' {
+                water += 1;
+            } else if grid[y][x] == '|' {
+                pipes += 1;
             }
         }
-        println!("{}", count);
-        if count == 44729 {
-            break;
-        }
-
-        let mut count2 = 0;
-        for y in 0..grid.len() {
-            for x in 0..grid[y].len() {
-                if grid[y][x] == '~' {
-                    count2 += 1;
-                }
-            }
-        }
-        println!("{}", count2);
     }
 
-    grid.iter()
-        .for_each(|r| println!("{}", String::from_iter(r)));
-    println!("{} {} {} {}", min_x, min_y, max_x, max_y);
-    println!();
+    // part 1
+    println!("{}", water + pipes);
+
+    // part 2
+    println!("{}", water);
 }
