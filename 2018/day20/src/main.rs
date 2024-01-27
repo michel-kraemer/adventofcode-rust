@@ -30,9 +30,8 @@ fn main() {
         .chars()
         .collect::<Vec<_>>();
 
-    // create a map of rooms and doors between them
-    let mut rooms: HashSet<(i32, i32)> = HashSet::new();
-    let mut doors: HashMap<(i32, i32), Vec<(i32, i32)>> = HashMap::new();
+    // create a map (i.e. a graph of rooms and their neighbors)
+    let mut rooms: HashMap<(i32, i32), HashSet<(i32, i32)>> = HashMap::new();
 
     let mut queue = VecDeque::new();
     let mut seen = HashSet::new();
@@ -40,7 +39,6 @@ fn main() {
     let initial = State { i: 0, x: 0, y: 0 };
     seen.insert(initial.clone());
     queue.push_back(initial);
-    rooms.insert((0, 0));
 
     while !queue.is_empty() {
         let mut s = queue.pop_front().unwrap();
@@ -54,26 +52,22 @@ fn main() {
                 // visit next room north, south, west, or east and add
                 // door between current room and next one
                 'N' => {
-                    rooms.insert((s.x, s.y - 1));
-                    doors.entry((s.x, s.y)).or_default().push((s.x, s.y - 1));
+                    rooms.entry((s.x, s.y)).or_default().insert((s.x, s.y - 1));
                     s.i += 1;
                     s.y -= 1;
                 }
                 'S' => {
-                    rooms.insert((s.x, s.y + 1));
-                    doors.entry((s.x, s.y)).or_default().push((s.x, s.y + 1));
+                    rooms.entry((s.x, s.y)).or_default().insert((s.x, s.y + 1));
                     s.i += 1;
                     s.y += 1;
                 }
                 'W' => {
-                    rooms.insert((s.x - 1, s.y));
-                    doors.entry((s.x, s.y)).or_default().push((s.x - 1, s.y));
+                    rooms.entry((s.x, s.y)).or_default().insert((s.x - 1, s.y));
                     s.i += 1;
                     s.x -= 1;
                 }
                 'E' => {
-                    rooms.insert((s.x + 1, s.y));
-                    doors.entry((s.x, s.y)).or_default().push((s.x + 1, s.y));
+                    rooms.entry((s.x, s.y)).or_default().insert((s.x + 1, s.y));
                     s.i += 1;
                     s.x += 1;
                 }
@@ -147,7 +141,7 @@ fn main() {
 
     while !queue.is_empty() {
         let s = queue.pop().unwrap().0;
-        if let Some(next) = doors.get(&(s.x, s.y)) {
+        if let Some(next) = rooms.get(&(s.x, s.y)) {
             for c in next {
                 seen.entry((c.0, c.1)).or_insert_with(|| {
                     queue.push(Reverse(State {
