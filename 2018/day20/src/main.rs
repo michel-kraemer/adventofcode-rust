@@ -30,7 +30,7 @@ fn main() {
         .chars()
         .collect::<Vec<_>>();
 
-    // create a map (i.e. a graph of rooms and their neighbors)
+    // create a map (i.e. a bi-directional graph of rooms and their neighbors)
     let mut rooms: HashMap<(i32, i32), HashSet<(i32, i32)>> = HashMap::new();
 
     let mut queue = VecDeque::new();
@@ -53,21 +53,25 @@ fn main() {
                 // door between current room and next one
                 'N' => {
                     rooms.entry((s.x, s.y)).or_default().insert((s.x, s.y - 1));
+                    rooms.entry((s.x, s.y - 1)).or_default().insert((s.x, s.y));
                     s.i += 1;
                     s.y -= 1;
                 }
                 'S' => {
                     rooms.entry((s.x, s.y)).or_default().insert((s.x, s.y + 1));
+                    rooms.entry((s.x, s.y + 1)).or_default().insert((s.x, s.y));
                     s.i += 1;
                     s.y += 1;
                 }
                 'W' => {
                     rooms.entry((s.x, s.y)).or_default().insert((s.x - 1, s.y));
+                    rooms.entry((s.x - 1, s.y)).or_default().insert((s.x, s.y));
                     s.i += 1;
                     s.x -= 1;
                 }
                 'E' => {
                     rooms.entry((s.x, s.y)).or_default().insert((s.x + 1, s.y));
+                    rooms.entry((s.x + 1, s.y)).or_default().insert((s.x, s.y));
                     s.i += 1;
                     s.x += 1;
                 }
