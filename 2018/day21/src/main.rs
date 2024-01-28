@@ -1,4 +1,8 @@
-use std::{collections::hash_map::Entry::Vacant, collections::HashMap, fs};
+use std::{
+    collections::hash_map::Entry::Vacant,
+    collections::{HashMap, HashSet},
+    env, fs,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Opcode {
@@ -124,8 +128,42 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    // part 1
-    let mut registers = vec![0; 6];
-    registers[0] = 0;
-    run(&program, pointer_register, &mut registers);
+    // Brute-force solution. Takes about 12 seconds on my computer for my input
+    if env::var("AOC_DAY21_BRUTE_FORCE").is_ok() {
+        let mut registers = vec![0; 6];
+        registers[0] = 0;
+        run(&program, pointer_register, &mut registers);
+    } else {
+        // program translated to Rust and simplified/optimized
+        let seed = program[7].1;
+
+        let mut seen = HashSet::new();
+        let mut generated_numbers = Vec::new();
+        let mut b = 65536;
+        let mut c = seed;
+        loop {
+            let a = b & 255;
+            c += a;
+            c &= 16777215;
+            c *= 65899;
+            c &= 16777215;
+            if 256 > b {
+                if seen.contains(&c) {
+                    break;
+                }
+                generated_numbers.push(c);
+                seen.insert(c);
+                b = c | 65536;
+                c = seed;
+            } else {
+                b /= 256;
+            }
+        }
+
+        // part 1
+        println!("{}", generated_numbers[0]);
+
+        // part 2
+        println!("{}", generated_numbers.last().unwrap());
+    }
 }
