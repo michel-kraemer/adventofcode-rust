@@ -1,24 +1,18 @@
-use std::{cmp::Reverse, collections::BinaryHeap, fs};
+mod grid;
 
-use rustc_hash::FxHashMap;
+use crate::grid::Grid;
+use std::{cmp::Reverse, collections::BinaryHeap, fs};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum Gear {
-    Neither,
-    Torch,
-    Climbing,
+    Neither = 0,
+    Torch = 1,
+    Climbing = 2,
 }
 
 const ROCKY: usize = 0;
 const WET: usize = 1;
 const NARROW: usize = 2;
-
-#[derive(Hash, PartialEq, Eq)]
-struct Key {
-    x: i32,
-    y: i32,
-    gear: Gear,
-}
 
 #[derive(Clone, PartialEq, Eq)]
 struct State {
@@ -40,26 +34,17 @@ impl PartialOrd for State {
     }
 }
 
-impl State {
-    fn to_key(&self) -> Key {
-        Key {
-            x: self.x,
-            y: self.y,
-            gear: self.gear,
-        }
-    }
-}
-
 fn erosion_level(
     x: usize,
     y: usize,
     target_x: usize,
     target_y: usize,
     depth: usize,
-    cache: &mut FxHashMap<(usize, usize), usize>,
+    cache: &mut Grid<usize>,
 ) -> usize {
-    if let Some(&e) = cache.get(&(x, y)) {
-        e
+    let cv = cache.get(x, y);
+    if cv != usize::MAX {
+        cv
     } else {
         let gi = if (y == 0 && x == 0) || (y == target_y && x == target_x) {
             0
@@ -72,7 +57,7 @@ fn erosion_level(
                 * erosion_level(x, y - 1, target_x, target_y, depth, cache)
         };
         let el = (gi + depth) % 20183;
-        cache.insert((x, y), el);
+        cache.insert(x, y, el);
         el
     }
 }
@@ -114,7 +99,7 @@ fn main() {
     let target_y = target_y.parse::<usize>().unwrap();
 
     // part 1
-    let mut cache = FxHashMap::default();
+    let mut cache = Grid::new(target_x, target_y, usize::MAX);
     let mut sum = 0;
     #[allow(clippy::needless_range_loop)]
     for y in 0..=target_y {
@@ -126,32 +111,22 @@ fn main() {
 
     // part 2
     let mut queue = BinaryHeap::new();
-    let mut seen = FxHashMap::default();
+    let mut seen = vec![Grid::new(target_x, target_y, usize::MAX); 3];
     let initial = State {
         minutes: 0,
         x: 0,
         y: 0,
         gear: Torch,
     };
-    seen.insert(initial.to_key(), initial.clone());
+    seen[Torch as usize].insert(0, 0, 0);
     queue.push(Reverse(initial));
 
     let mut min_minutes = usize::MAX;
     while !queue.is_empty() {
         let s = queue.pop().unwrap().0;
 
-        if s.x as usize == target_x && s.y as usize == target_y {
-            let mut minutes = s.minutes;
-            if s.gear != Torch {
-                minutes += 7;
-            }
-            min_minutes = min_minutes.min(minutes);
-            // do not break here, there might be shorter paths (where we
-            // don't have to switch gear)
-        }
-
-        if s.minutes > min_minutes {
-            // no other path can be shorter
+        if s.x as usize == target_x && s.y as usize == target_y && s.gear == Torch {
+            min_minutes = s.minutes;
             break;
         }
 
@@ -174,39 +149,35 @@ fn main() {
                         y: ny,
                         gear: s.gear,
                     };
-                    let k = ns.to_key();
-                    let e = seen.get(&k);
-                    if e.is_none() || e.unwrap().minutes > ns.minutes {
-                        seen.insert(k, ns.clone());
+                    let e = seen[ns.gear as usize].get(ns.x as usize, ns.y as usize);
+                    if e > ns.minutes {
+                        seen[ns.gear as usize].insert(ns.x as usize, ns.y as usize, ns.minutes);
                         queue.push(Reverse(ns));
                     }
                 }
+            }
+        }
 
-                for ng in [Neither, Torch, Climbing] {
-                    let current_type = erosion_level(
-                        s.x as usize,
-                        s.y as usize,
-                        target_x,
-                        target_y,
-                        depth,
-                        &mut cache,
-                    ) % 3;
-                    if !gear_ok(ng, current_type) {
-                        continue;
-                    }
-
-                    let ns = State {
-                        minutes: s.minutes + 7,
-                        x: s.x,
-                        y: s.y,
-                        gear: ng,
-                    };
-                    let k = ns.to_key();
-                    let e = seen.get(&k);
-                    if e.is_none() || e.unwrap().minutes > ns.minutes {
-                        seen.insert(k, ns.clone());
-                        queue.push(Reverse(ns));
-                    }
+        for ng in [Neither, Torch, Climbing] {
+            let current_type = erosion_level(
+                s.x as usize,
+                s.y as usize,
+                target_x,
+                target_y,
+                depth,
+                &mut cache,
+            ) % 3;
+            if gear_ok(ng, current_type) {
+                let ns = State {
+                    minutes: s.minutes + 7,
+                    x: s.x,
+                    y: s.y,
+                    gear: ng,
+                };
+                let e = seen[ns.gear as usize].get(ns.x as usize, ns.y as usize);
+                if e > ns.minutes {
+                    seen[ns.gear as usize].insert(ns.x as usize, ns.y as usize, ns.minutes);
+                    queue.push(Reverse(ns));
                 }
             }
         }
