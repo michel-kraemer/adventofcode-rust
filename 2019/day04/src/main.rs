@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs};
+use std::fs;
 
 fn main() {
     for part1 in [true, false] {
@@ -7,31 +7,36 @@ fn main() {
         let range = range.0.parse::<usize>().unwrap()..=range.1.parse::<usize>().unwrap();
 
         let mut total = 0;
-        for i in range {
-            let s = format!("{}", i);
-            if s.len() != 6 {
+        for mut i in range {
+            if !(100000..=999999).contains(&i) {
                 continue;
             }
 
             let mut increasing = true;
-            let mut last_digit = 0;
-            let mut same: HashMap<u32, u32> = HashMap::new();
-            for c in s.chars() {
-                let digit = c.to_digit(10).unwrap();
-                if digit < last_digit {
+            let mut last_digit = usize::MAX;
+            let mut same = [0; 10];
+            let mut any_same = false;
+            while i > 0 {
+                let digit = i % 10;
+                i /= 10;
+
+                // we're parsing from right to left!
+                if digit > last_digit {
                     increasing = false;
                     break;
                 }
+
                 if digit == last_digit {
-                    *same.entry(digit).or_default() += 1;
+                    same[digit] += 1;
+                    any_same = true;
                 }
                 last_digit = digit;
             }
 
             let ok = increasing
                 && match part1 {
-                    true => !same.is_empty(),
-                    false => same.values().any(|&v| v == 1),
+                    true => any_same,
+                    false => same.into_iter().any(|v| v == 1),
                 };
             if ok {
                 total += 1;
