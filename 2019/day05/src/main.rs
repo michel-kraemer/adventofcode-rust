@@ -7,128 +7,92 @@ fn run(memory: &[i64], input: i64) -> i64 {
 
     let mut i = 0;
     loop {
-        let mut code = memory[i];
+        let code = memory[i];
 
         let opcode = code % 100;
-        code /= 100;
-        let param1_mode = code % 10;
-        code /= 10;
-        let param2_mode = code % 10;
-
         if opcode == 99 {
             return output;
         }
 
-        if opcode == 1 {
-            let a = if param1_mode == 0 {
-                memory[memory[i + 1] as usize]
-            } else {
-                memory[i + 1]
-            };
-            let b = if param2_mode == 0 {
-                memory[memory[i + 2] as usize]
-            } else {
-                memory[i + 2]
-            };
-            let c = memory[i + 3] as usize;
-            i += 4;
-            memory[c] = a + b;
-        } else if opcode == 2 {
-            let a = if param1_mode == 0 {
-                memory[memory[i + 1] as usize]
-            } else {
-                memory[i + 1]
-            };
-            let b = if param2_mode == 0 {
-                memory[memory[i + 2] as usize]
-            } else {
-                memory[i + 2]
-            };
-            let c = memory[i + 3] as usize;
-            i += 4;
-            memory[c] = a * b;
-        } else if opcode == 3 {
-            let a = memory[i + 1] as usize;
-            memory[a] = input;
-            i += 2;
-        } else if opcode == 4 {
-            output = if param1_mode == 0 {
-                memory[memory[i + 1] as usize]
-            } else {
-                memory[i + 1]
-            };
-            i += 2;
-        } else if opcode == 5 {
-            let a = if param1_mode == 0 {
-                memory[memory[i + 1] as usize]
-            } else {
-                memory[i + 1]
-            };
-            let b = if param2_mode == 0 {
-                memory[memory[i + 2] as usize]
-            } else {
-                memory[i + 2]
-            };
-            if a != 0 {
-                i = b as usize;
-            } else {
-                i += 3;
+        /// get value of the parameter at index $pi
+        macro_rules! inp {
+            ($pi:literal) => {{
+                let mode = (code / 100 / 10i64.pow($pi - 1)) % 10;
+                if mode == 0 {
+                    memory[memory[i + $pi] as usize]
+                } else {
+                    memory[i + $pi]
+                }
+            }};
+        }
+
+        /// write $v to the memory location specified by the parameter at index $pi
+        macro_rules! out {
+            ($pi:literal, $v:expr) => {{
+                let o = memory[i + $pi] as usize;
+                memory[o] = $v;
+            }};
+        }
+
+        match opcode {
+            1 => {
+                // add
+                out!(3, inp!(1) + inp!(2));
+                i += 4;
             }
-        } else if opcode == 6 {
-            let a = if param1_mode == 0 {
-                memory[memory[i + 1] as usize]
-            } else {
-                memory[i + 1]
-            };
-            let b = if param2_mode == 0 {
-                memory[memory[i + 2] as usize]
-            } else {
-                memory[i + 2]
-            };
-            if a == 0 {
-                i = b as usize;
-            } else {
-                i += 3;
+
+            2 => {
+                // mul
+                out!(3, inp!(1) * inp!(2));
+                i += 4;
             }
-        } else if opcode == 7 {
-            let a = if param1_mode == 0 {
-                memory[memory[i + 1] as usize]
-            } else {
-                memory[i + 1]
-            };
-            let b = if param2_mode == 0 {
-                memory[memory[i + 2] as usize]
-            } else {
-                memory[i + 2]
-            };
-            let c = memory[i + 3] as usize;
-            if a < b {
-                memory[c] = 1;
-            } else {
-                memory[c] = 0;
+
+            3 => {
+                // read input
+                out!(1, input);
+                i += 2;
             }
-            i += 4;
-        } else if opcode == 8 {
-            let a = if param1_mode == 0 {
-                memory[memory[i + 1] as usize]
-            } else {
-                memory[i + 1]
-            };
-            let b = if param2_mode == 0 {
-                memory[memory[i + 2] as usize]
-            } else {
-                memory[i + 2]
-            };
-            let c = memory[i + 3] as usize;
-            if a == b {
-                memory[c] = 1;
-            } else {
-                memory[c] = 0;
+
+            4 => {
+                // write output
+                output = inp!(1);
+                i += 2;
             }
-            i += 4;
-        } else {
-            panic!("Unknown opcode: {}", opcode)
-        };
+
+            5 => {
+                // jump if true
+                if inp!(1) != 0 {
+                    i = inp!(2) as usize;
+                } else {
+                    i += 3;
+                }
+            }
+
+            6 => {
+                // jump if false
+                if inp!(1) == 0 {
+                    i = inp!(2) as usize;
+                } else {
+                    i += 3;
+                }
+            }
+
+            7 => {
+                // less than
+                out!(3, (inp!(1) < inp!(2)) as i64);
+                i += 4;
+            }
+
+            8 => {
+                // equals
+                out!(3, (inp!(1) == inp!(2)) as i64);
+                i += 4;
+            }
+
+            _ => {
+                panic!("Unknown opcode: {}", opcode)
+            }
+        }
     }
 }
 
