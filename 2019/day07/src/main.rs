@@ -1,5 +1,7 @@
 use std::fs;
 
+use itertools::Itertools;
+
 struct Machine {
     memory: Vec<i64>,
     input1: i64,
@@ -124,67 +126,32 @@ fn main() {
             .map(|i| i.parse::<i64>().unwrap())
             .collect::<Vec<_>>();
 
-        let mut m = 0;
-        for a in if part1 { 0..5 } else { 5..10 } {
-            for b in if part1 { 0..5 } else { 5..10 } {
-                if b == a {
-                    continue;
+        let perms = (if part1 { 0..5 } else { 5..10 }).permutations(5);
+        let mut max_signal = 0;
+        for p in perms {
+            let mut machines = p
+                .iter()
+                .map(|&input1| Machine::new(&memory, input1))
+                .collect::<Vec<_>>();
+
+            let mut fre = 0;
+            'outer: loop {
+                for m in &mut machines {
+                    if let Some(r) = m.run(fre) {
+                        fre = r;
+                    } else {
+                        break 'outer;
+                    }
                 }
-                for c in if part1 { 0..5 } else { 5..10 } {
-                    if c == a || c == b {
-                        continue;
-                    }
-                    for d in if part1 { 0..5 } else { 5..10 } {
-                        if d == a || d == b || d == c {
-                            continue;
-                        }
-                        for e in if part1 { 0..5 } else { 5..10 } {
-                            if e == a || e == b || e == c || e == d {
-                                continue;
-                            }
 
-                            let mut ma = Machine::new(&memory, a);
-                            let mut mb = Machine::new(&memory, b);
-                            let mut mc = Machine::new(&memory, c);
-                            let mut md = Machine::new(&memory, d);
-                            let mut me = Machine::new(&memory, e);
-
-                            let mut fre = 0;
-                            'outer: loop {
-                                if let Some(ra) = ma.run(fre) {
-                                    if let Some(rb) = mb.run(ra) {
-                                        if let Some(rc) = mc.run(rb) {
-                                            if let Some(rd) = md.run(rc) {
-                                                if let Some(re) = me.run(rd) {
-                                                    fre = re;
-                                                } else {
-                                                    break 'outer;
-                                                }
-                                            } else {
-                                                break 'outer;
-                                            }
-                                        } else {
-                                            break 'outer;
-                                        }
-                                    } else {
-                                        break 'outer;
-                                    }
-                                } else {
-                                    break 'outer;
-                                }
-
-                                if part1 {
-                                    break;
-                                }
-                            }
-
-                            m = m.max(fre);
-                        }
-                    }
+                if part1 {
+                    break;
                 }
             }
+
+            max_signal = max_signal.max(fre);
         }
 
-        println!("{}", m);
+        println!("{}", max_signal);
     }
 }
