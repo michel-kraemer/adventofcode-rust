@@ -1,4 +1,4 @@
-use std::fs;
+use std::{collections::BTreeMap, fs};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 struct Asteroid {
@@ -6,52 +6,44 @@ struct Asteroid {
     y: i32,
 }
 
-fn in_sight(asteroids: &Vec<Asteroid>, from: Asteroid) -> Vec<Asteroid> {
-    let mut result = Vec::new();
+#[derive(Copy, Clone, PartialEq)]
+struct Angle(f64);
 
+impl Eq for Angle {}
+
+impl PartialOrd for Angle {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Angle {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other.0.total_cmp(&self.0)
+    }
+}
+
+fn in_sight(asteroids: &[Asteroid], from: Asteroid) -> BTreeMap<Angle, Asteroid> {
+    let mut result: BTreeMap<Angle, Asteroid> = BTreeMap::new();
     for &to in asteroids {
         if from == to {
             continue;
         }
 
-        let mut blocked = false;
-        for &between in asteroids {
-            if between == from || between == to {
-                continue;
-            }
-
-            let dx = to.x - from.x;
-            let dy = to.y - from.y;
-
-            let dxb = between.x - from.x;
-            let dyb = between.y - from.y;
-
-            let cross = dxb * dy - dyb * dx;
-            if cross == 0 {
-                let b = if dx.abs() >= dy.abs() {
-                    if dx > 0 {
-                        from.x <= between.x && between.x <= to.x
-                    } else {
-                        to.x <= between.x && between.x <= from.x
-                    }
-                } else if dy > 0 {
-                    from.y <= between.y && between.y <= to.y
-                } else {
-                    to.y <= between.y && between.y <= from.y
-                };
-
-                if b {
-                    blocked = true;
-                    break;
+        let dx = to.x - from.x;
+        let dy = to.y - from.y;
+        let a = Angle((dx as f64).atan2(dy as f64));
+        let l = dx.abs() + dy.abs();
+        result
+            .entry(a)
+            .and_modify(|e| {
+                let l2 = (e.x - from.x).abs() + (e.y - from.y).abs();
+                if l < l2 {
+                    *e = to;
                 }
-            }
-        }
-
-        if !blocked {
-            result.push(to);
-        }
+            })
+            .or_insert(to);
     }
-
     result
 }
 
@@ -90,17 +82,7 @@ fn main() {
     let mut nd = 0;
     let result: Asteroid;
     'outer: loop {
-        let is = in_sight(&asteroids, station);
-        let mut angles = is
-            .into_iter()
-            .map(|i| {
-                let delta_x = i.x - station.x;
-                let delta_y = i.y - station.y;
-                let r = (delta_x as f64).atan2(delta_y as f64);
-                (r, i)
-            })
-            .collect::<Vec<_>>();
-        angles.sort_by(|a, b| b.0.total_cmp(&a.0));
+        let angles = in_sight(&asteroids, station);
 
         assert!(!angles.is_empty(), "less than 200 asteroids");
 
