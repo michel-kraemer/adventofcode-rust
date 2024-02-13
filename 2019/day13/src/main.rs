@@ -1,4 +1,7 @@
-use std::fs;
+use crossterm::{cursor, style, terminal, ExecutableCommand};
+use std::error::Error;
+use std::io::stdout;
+use std::{env, fs, thread, time};
 
 struct Machine {
     memory: Vec<i64>,
@@ -142,7 +145,7 @@ impl Machine {
     }
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
     let mut memory = input
         .trim()
@@ -153,10 +156,26 @@ fn main() {
     // play for free
     memory[0] = 2;
 
+    // should the game be visualized on the terminal?
+    let visualize = env::var("AOC_DAY13_VISUALIZE").is_ok();
+
+    let mut stdout = stdout();
+    let pos = if visualize {
+        // make space on screen and reset cursor
+        stdout.execute(terminal::ScrollUp(25))?;
+        stdout.execute(cursor::MoveTo(0, cursor::position()?.1 - 25))?;
+
+        // hide cursor
+        stdout.execute(cursor::Hide)?;
+
+        cursor::position()?
+    } else {
+        (0u16, 0u16)
+    };
+
     let mut robot = Machine::new(&memory, 0);
-    let mut tiles = 0;
+    let mut block_tiles = 0;
     let mut score = 0;
-    let mut grid = vec![vec![' '; 40]; 25];
 
     let mut ball_x = 0;
     let mut paddle_x = 0;
@@ -174,19 +193,28 @@ fn main() {
                 if let Some(tpe) = robot.run(joystick) {
                     if x == -1 && y == 0 {
                         score = tpe;
-                    } else if tpe == 0 {
-                        grid[y as usize][x as usize] = ' ';
-                    } else if tpe == 1 {
-                        grid[y as usize][x as usize] = '█';
-                    } else if tpe == 2 {
-                        grid[y as usize][x as usize] = '▪';
-                        tiles += 1;
-                    } else if tpe == 3 {
-                        paddle_x = x;
-                        grid[y as usize][x as usize] = '—';
                     } else {
-                        ball_x = x;
-                        grid[y as usize][x as usize] = '○';
+                        let c = match tpe {
+                            0 => ' ',
+                            1 => '█',
+                            2 => {
+                                block_tiles += 1;
+                                '▪'
+                            }
+                            3 => {
+                                paddle_x = x;
+                                '—'
+                            }
+                            4 => {
+                                ball_x = x;
+                                '○'
+                            }
+                            _ => panic!(),
+                        };
+                        if visualize {
+                            stdout.execute(cursor::MoveTo(pos.0 + x as u16, pos.1 + y as u16))?;
+                            stdout.execute(style::Print(c))?;
+                        }
                     }
                 } else {
                     break;
@@ -198,13 +226,21 @@ fn main() {
             break;
         }
 
-        // grid.iter()
-        //     .for_each(|r| println!("{}", String::from_iter(r)));
+        if visualize {
+            thread::sleep(time::Duration::from_millis(1));
+        }
+    }
+
+    if visualize {
+        stdout.execute(cursor::MoveTo(0, 25))?;
+        stdout.execute(cursor::Show)?;
     }
 
     // part 1
-    println!("{}", tiles);
+    println!("{}", block_tiles);
 
     // part 2
     println!("{}", score);
+
+    Ok(())
 }
