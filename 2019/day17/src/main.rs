@@ -1,5 +1,11 @@
 use std::{collections::HashMap, fs};
 
+use compress::compress;
+use instruction::{Instruction, Turn};
+
+mod compress;
+mod instruction;
+
 struct Machine {
     memory: Vec<i64>,
     i: usize,
@@ -134,13 +140,6 @@ impl Machine {
     }
 }
 
-enum Turn {
-    Left,
-    Right,
-}
-
-struct Move(Turn, usize);
-
 fn find_turn(
     x: i32,
     y: i32,
@@ -247,22 +246,26 @@ fn main() {
             steps += 1;
         }
 
-        trace.push(Move(turn, steps));
+        trace.push(Instruction::Move(turn, steps));
     }
 
-    // => "R,4,L,10,L,10,L,8,R,12,R,10,R,4,R,4,L,10,L,10,L,8,R,12,R,10,R,4,R,4,L,10,L,10,L,8,L,8,R,10,R,4,L,8,R,12,R,10,R,4,L,8,L,8,R,10,R,4,R,4,L,10,L,10,L,8,L,8,R,10,R,4";
-
-    let main = "A,B,A,B,A,C,B,C,A,C";
-
-    let a = "R,4,L,10,L,10";
-    let b = "L,8,R,12,R,10,R,4";
-    let c = "L,8,L,8,R,10,R,4";
-    let video = "n";
-
-    let input = [main, a, b, c, video, ""].join("\n");
+    // compress trace into main routine and functions a, b, and c
+    let compressed = compress(&trace).unwrap();
 
     // wake up robot
     robot.memory[0] = 2;
+
+    // build input
+    let video = "n";
+    let input = [
+        &compressed.main,
+        &compressed.a,
+        &compressed.b,
+        &compressed.c,
+        video,
+        "",
+    ]
+    .join("\n");
 
     // Provide instructions to robot and wait until it has visited every
     // scaffolding piece. Read final output (= collected dust).
