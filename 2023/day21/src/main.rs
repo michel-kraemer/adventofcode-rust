@@ -1,74 +1,131 @@
 use std::{collections::HashMap, fs, hash::Hash};
 
+use bitarray::BitArray;
+
+mod bitarray;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Address {
     r: i64,
     c: i64,
 }
 
-#[derive(Debug)]
+enum MessageBody {
+    Row(i64, BitArray),
+    Point(i64, i64),
+}
+
 struct Message {
     addr: Address,
-    points: Vec<(i64, i64)>,
+    body: MessageBody,
 }
 
 struct Node {
     addr: Address,
-    positions: Vec<Vec<bool>>,
-    count: usize,
+    positions: Vec<BitArray>,
 }
 
 impl Node {
-    fn new(addr: Address, w: usize, h: usize) -> Self {
+    fn new(addr: Address, size: usize) -> Self {
         Self {
             addr,
-            positions: vec![vec![false; w]; h],
-            count: 0,
+            positions: vec![BitArray::new(size); size],
         }
     }
 
-    fn calculate_next_state(&mut self, grid: &[Vec<char>], size: usize) -> Vec<Message> {
+    fn count(&self) -> usize {
+        self.positions.iter().map(|p| p.count_ones()).sum::<usize>()
+    }
+
+    fn calculate_next_state(&mut self, grid_bits: &[BitArray], size: usize) -> Vec<Message> {
         let mut messages = Vec::new();
 
-        let mut new_positions = vec![vec![false; size]; size];
-        let mut count = 0;
+        // Build new_positions by shifting the current positions to the top,
+        // left, right, and bottom. Record bits shifted out of the grid and
+        // send them to our neighbors.
+        let mut new_positions = vec![BitArray::new(size); size];
         for y in 0..size {
-            for x in 0..size {
-                if !self.positions[y][x] {
-                    continue;
-                }
-                for d in [(0, 1), (0, -1), (1, 0), (-1, 0)] {
-                    let nx = x as i64 + d.0;
-                    let ny = y as i64 + d.1;
-                    if nx < 0 || nx >= size as i64 || ny < 0 || ny >= size as i64 {
-                        // point is outside the grid, send message to neighbor
-                        messages.push(Message {
-                            addr: Address {
-                                r: self.addr.r + d.1,
-                                c: self.addr.c + d.0,
-                            },
-                            points: vec![(nx - d.0 * size as i64, ny - d.1 * size as i64)],
-                        });
-                    } else if grid[ny as usize][nx as usize] != '#'
-                        && !new_positions[ny as usize][nx as usize]
-                    {
-                        count += 1;
-                        new_positions[ny as usize][nx as usize] = true;
-                    }
-                }
+            // shift up (copy bits to the row above)
+            if y > 0 {
+                new_positions[y - 1] |= &self.positions[y];
+            } else if self.positions[y].count_ones() > 0 {
+                messages.push(Message {
+                    addr: Address {
+                        r: self.addr.r - 1,
+                        c: self.addr.c,
+                    },
+                    body: MessageBody::Row(size as i64 - 1, self.positions[y].clone()),
+                });
+            }
+
+            // shift down (copy bits to the row below)
+            if y < size - 1 {
+                new_positions[y + 1] |= &self.positions[y];
+            } else if self.positions[y].count_ones() > 0 {
+                messages.push(Message {
+                    addr: Address {
+                        r: self.addr.r + 1,
+                        c: self.addr.c,
+                    },
+                    body: MessageBody::Row(0, self.positions[y].clone()),
+                });
+            }
+
+            // shift left
+            self.positions[y].rotate_left();
+            let mut reset_left = false;
+            if self.positions[y].get(size - 1) {
+                messages.push(Message {
+                    addr: Address {
+                        r: self.addr.r,
+                        c: self.addr.c - 1,
+                    },
+                    body: MessageBody::Point(size as i64 - 1, y as i64),
+                });
+                reset_left = true;
+                self.positions[y].clear(size - 1);
+            }
+
+            new_positions[y] |= &self.positions[y];
+
+            if reset_left {
+                self.positions[y].set(size - 1);
+            }
+
+            // shift right
+            self.positions[y].rotate_right();
+            self.positions[y].rotate_right();
+            if self.positions[y].get(0) {
+                messages.push(Message {
+                    addr: Address {
+                        r: self.addr.r,
+                        c: self.addr.c + 1,
+                    },
+                    body: MessageBody::Point(0, y as i64),
+                });
+                self.positions[y].clear(0);
+            }
+            new_positions[y] |= &self.positions[y];
+
+            // clear bits where there are rocks in the grid
+            if y > 0 {
+                new_positions[y - 1].clear_all(&grid_bits[y - 1]);
             }
         }
+        new_positions[size - 1].clear_all(&grid_bits[size - 1]);
+
         self.positions = new_positions;
-        self.count = count;
 
         messages
     }
 
     fn process_message(&mut self, msg: Message) {
-        for (nx, ny) in msg.points {
-            if !self.positions[ny as usize][nx as usize] {
-                self.count += 1;
-                self.positions[ny as usize][nx as usize] = true;
+        match msg.body {
+            MessageBody::Row(y, row) => {
+                self.positions[y as usize] |= &row;
+            }
+            MessageBody::Point(x, y) => {
+                self.positions[y as usize].set(x as usize);
             }
         }
     }
@@ -88,6 +145,7 @@ fn main() {
 
         assert_eq!(grid[0].len(), grid.len(), "Grid must be square");
         let size = grid.len();
+        assert!(size % 2 == 1, "Grid size must be odd");
 
         // find start position
         let mut start = (0i64, 0i64);
@@ -98,10 +156,24 @@ fn main() {
                 }
             }
         }
+        assert!(
+            start.0 == size as i64 / 2 && start.1 == size as i64 / 2,
+            "Start position must be in the center"
+        );
+
+        // convert grid to bit array
+        let mut grid_bits = vec![BitArray::new(size); size];
+        for (y, row) in grid.iter().enumerate() {
+            for (x, c) in row.iter().enumerate() {
+                if *c == '#' {
+                    grid_bits[y].set(x);
+                }
+            }
+        }
 
         // prepare center node
-        let mut center_positions = vec![vec![false; size]; size];
-        center_positions[start.1 as usize][start.0 as usize] = true;
+        let mut center_positions = vec![BitArray::new(size); size];
+        center_positions[start.1 as usize].set(start.0 as usize);
         let mut nodes = HashMap::new();
         let addr = Address { r: 0, c: 0 };
         nodes.insert(
@@ -109,7 +181,6 @@ fn main() {
             Node {
                 addr,
                 positions: center_positions,
-                count: 1,
             },
         );
 
@@ -128,14 +199,14 @@ fn main() {
             // send to their neighbors
             let mut messages = Vec::new();
             for n in nodes.values_mut() {
-                messages.extend(n.calculate_next_state(&grid, size));
+                messages.extend(n.calculate_next_state(&grid_bits, size));
             }
 
             // process messages
             for msg in messages {
                 let recipient = nodes
                     .entry(msg.addr)
-                    .or_insert_with(|| Node::new(msg.addr, size, size));
+                    .or_insert_with(|| Node::new(msg.addr, size));
                 recipient.process_message(msg);
             }
 
@@ -147,14 +218,14 @@ fn main() {
         }
 
         if part1 || steps != break_steps {
-            println!("{}", nodes.values().map(|c| c.count).sum::<usize>());
+            println!("{}", nodes.values().map(|c| c.count()).sum::<usize>());
         } else {
             let min_row = nodes.values().map(|n| n.addr.r).min().unwrap();
             let max_row = nodes.values().map(|n| n.addr.r).max().unwrap();
             let mut row_sums: HashMap<i64, usize> = HashMap::new();
             let mut row_counts: HashMap<i64, usize> = HashMap::new();
             for n in nodes.values() {
-                *row_sums.entry(n.addr.r).or_default() += n.count;
+                *row_sums.entry(n.addr.r).or_default() += n.count();
                 *row_counts.entry(n.addr.r).or_default() += 1;
             }
 
@@ -162,7 +233,7 @@ fn main() {
             // extrapolated row, the count of the center node plus its neighbor
             // must be added to the previous row)
             let inc_per_row =
-                nodes[&Address { r: 0, c: 0 }].count + nodes[&Address { r: 0, c: 1 }].count;
+                nodes[&Address { r: 0, c: 0 }].count() + nodes[&Address { r: 0, c: 1 }].count();
 
             // calculate the virtual number of rows above the center row
             let max_rows = max_steps as f64 / size as f64;
