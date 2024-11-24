@@ -46,26 +46,27 @@ fn main() {
     let max_y = bricks.iter().map(|b| b.0 .1.max(b.1 .1)).max().unwrap();
 
     let mut initial_grid = vec![vec![0i32; max_x as usize + 1]; max_y as usize + 1];
-    let mut initial_tops = Vec::new();
+    let mut initial_heights = Vec::new();
     for b in &bricks {
-        initial_tops.push(fall(&mut initial_grid, *b));
+        initial_heights.push(fall(&mut initial_grid, *b));
     }
 
     let mut is_safe = 0;
     let mut would_fall = 0;
+    let mut grid = vec![vec![0i32; max_x as usize + 1]; max_y as usize + 1];
     for i in 0..bricks.len() {
-        let mut grid = vec![vec![0i32; max_x as usize + 1]; max_y as usize + 1];
+        let mut g = grid.clone();
+        fall(&mut grid, bricks[i]);
+
         let mut did_fall = false;
-        for (j, b) in bricks.iter().enumerate() {
-            if i == j {
-                continue;
-            }
-            let t = fall(&mut grid, *b);
-            if t != initial_tops[j] {
+        for (j, b) in bricks.iter().skip(i + 1).enumerate() {
+            let t = fall(&mut g, *b);
+            if t != initial_heights[j + i + 1] {
                 did_fall = true;
                 would_fall += 1;
             }
         }
+
         if !did_fall {
             is_safe += 1;
         }
