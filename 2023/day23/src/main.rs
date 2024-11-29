@@ -64,14 +64,10 @@ fn insert_edge(
 fn main() {
     for part1 in [true, false] {
         let input = fs::read_to_string("input.txt").expect("Could not read file");
-        let mut grid = Vec::<u8>::new();
-        let mut w = 0;
-        let mut h = 0;
-        for l in input.lines() {
-            h += 1;
-            w = l.as_bytes().len();
-            grid.extend(l.as_bytes());
-        }
+        let lines: Vec<&str> = input.lines().collect();
+        let grid: Vec<u8> = lines.iter().flat_map(|&l| l.as_bytes().to_vec()).collect();
+        let w = lines[0].len();
+        let h = lines.len();
 
         // find start
         let mut start = (0i32, 0i32);
