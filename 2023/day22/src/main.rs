@@ -1,18 +1,18 @@
 use std::{fs, vec};
 
-fn fall(grid: &mut [Vec<i32>], brick: ((i32, i32, i32), (i32, i32, i32))) -> i32 {
+fn fall(grid: &mut [i32], w: usize, brick: ((i32, i32, i32), (i32, i32, i32))) -> i32 {
     let ((x1, y1, z1), (x2, y2, z2)) = brick;
     let mut lowest = 0;
     for x in x1.min(x2)..=x1.max(x2) {
         for y in y1.min(y2)..=y1.max(y2) {
-            if grid[x as usize][y as usize] > lowest {
-                lowest = grid[x as usize][y as usize];
+            if grid[y as usize * w + x as usize] > lowest {
+                lowest = grid[y as usize * w + x as usize];
             }
         }
     }
     for x in x1.min(x2)..=x1.max(x2) {
         for y in y1.min(y2)..=y1.max(y2) {
-            grid[x as usize][y as usize] = lowest + (z2 - z1 + 1).abs();
+            grid[y as usize * w + x as usize] = lowest + (z2 - z1 + 1).abs();
         }
     }
     lowest
@@ -42,25 +42,25 @@ fn main() {
         za.cmp(&zb)
     });
 
-    let max_x = bricks.iter().map(|b| b.0 .0.max(b.1 .0)).max().unwrap();
-    let max_y = bricks.iter().map(|b| b.0 .1.max(b.1 .1)).max().unwrap();
+    let w = bricks.iter().map(|b| b.0 .0.max(b.1 .0)).max().unwrap() as usize + 1;
+    let h = bricks.iter().map(|b| b.0 .1.max(b.1 .1)).max().unwrap() as usize + 1;
 
-    let mut initial_grid = vec![vec![0i32; max_x as usize + 1]; max_y as usize + 1];
+    let mut initial_grid = vec![0i32; w * h];
     let mut initial_heights = Vec::new();
     for b in &bricks {
-        initial_heights.push(fall(&mut initial_grid, *b));
+        initial_heights.push(fall(&mut initial_grid, w, *b));
     }
 
     let mut is_safe = 0;
     let mut would_fall = 0;
-    let mut grid = vec![vec![0i32; max_x as usize + 1]; max_y as usize + 1];
+    let mut grid = vec![0i32; w * h];
     for i in 0..bricks.len() {
         let mut g = grid.clone();
-        fall(&mut grid, bricks[i]);
+        fall(&mut grid, w, bricks[i]);
 
         let mut did_fall = false;
         for (j, b) in bricks.iter().skip(i + 1).enumerate() {
-            let t = fall(&mut g, *b);
+            let t = fall(&mut g, w, *b);
             if t != initial_heights[j + i + 1] {
                 did_fall = true;
                 would_fall += 1;
