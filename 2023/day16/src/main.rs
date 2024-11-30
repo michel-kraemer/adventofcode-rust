@@ -73,8 +73,12 @@ fn energize(start: (i32, i32, i32, i32), grid: &[u8], w: usize, h: usize) -> usi
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
-    let lines: Vec<&str> = input.lines().collect();
-    let grid: Vec<u8> = lines.iter().flat_map(|&l| l.as_bytes().to_vec()).collect();
+    let lines = input.lines().collect::<Vec<_>>();
+    let grid = lines
+        .iter()
+        .flat_map(|l| l.as_bytes())
+        .copied()
+        .collect::<Vec<_>>();
     let w = lines[0].len();
     let h = lines.len();
 
