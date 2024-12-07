@@ -1,12 +1,25 @@
 use std::fs;
 
 fn concat(a: i64, b: i64) -> i64 {
-    let concat = format!("{}{}", a, b);
-    concat.parse::<i64>().unwrap()
+    // in my input, no number seems to be bigger than 999
+    debug_assert!(b < 10000);
+    if b >= 1000 {
+        a * 10000 + b
+    } else if b >= 100 {
+        a * 1000 + b
+    } else if b >= 10 {
+        a * 100 + b
+    } else {
+        a * 10 + b
+    }
 }
 
 fn check(result: i64, cur: i64, numbers: &[i64], part1: bool) -> bool {
-    if numbers.len() == 1 {
+    if cur > result {
+        // since we only know addition, multiplication, and concatenation,
+        // `cur` can never be larger than `result`
+        false
+    } else if numbers.len() == 1 {
         let nc = cur + numbers[0];
         if nc == result {
             return true;
@@ -15,9 +28,11 @@ fn check(result: i64, cur: i64, numbers: &[i64], part1: bool) -> bool {
         if nc == result {
             return true;
         }
-        let nc = concat(cur, numbers[0]);
-        if !part1 && nc == result {
-            return true;
+        if !part1 {
+            let nc = concat(cur, numbers[0]);
+            if nc == result {
+                return true;
+            }
         }
         false
     } else {
@@ -29,9 +44,11 @@ fn check(result: i64, cur: i64, numbers: &[i64], part1: bool) -> bool {
         if check(result, nc, &numbers[1..], part1) {
             return true;
         }
-        let nc = concat(cur, numbers[0]);
-        if !part1 && check(result, nc, &numbers[1..], part1) {
-            return true;
+        if !part1 {
+            let nc = concat(cur, numbers[0]);
+            if check(result, nc, &numbers[1..], part1) {
+                return true;
+            }
         }
         false
     }
