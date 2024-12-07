@@ -1,38 +1,27 @@
 use std::fs;
 
 fn check(cur: u64, numbers: &[u64], i: usize, part1: bool) -> bool {
-    if !part1 {
+    if i == 0 {
+        return cur == numbers[0];
+    }
+
+    if !part1 && cur > numbers[i] {
         // get number of digits
         let mask = 10u64.pow(numbers[i].checked_ilog10().unwrap_or(0) + 1);
-        if cur > numbers[i] && (cur - numbers[i]) % mask == 0 {
+        if (cur - numbers[i]) % mask == 0 && check(cur / mask, numbers, i - 1, part1) {
             // last n digits can be truncated
-            if i == 0 {
-                return cur == numbers[i];
-            }
-            if check(cur / mask, numbers, i - 1, part1) {
-                return true;
-            }
+            return true;
         }
     }
 
-    if cur % numbers[i] == 0 {
+    if cur % numbers[i] == 0 && check(cur / numbers[i], numbers, i - 1, part1) {
         // number is divisible
-        if i == 0 {
-            return cur == numbers[i];
-        }
-        if check(cur / numbers[i], numbers, i - 1, part1) {
-            return true;
-        }
+        return true;
     }
 
-    if cur >= numbers[i] {
+    if cur >= numbers[i] && check(cur - numbers[i], numbers, i - 1, part1) {
         // we can subtract
-        if i == 0 {
-            return cur == numbers[i];
-        }
-        if check(cur - numbers[i], numbers, i - 1, part1) {
-            return true;
-        }
+        return true;
     }
 
     false
