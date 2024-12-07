@@ -1,57 +1,41 @@
 use std::fs;
 
-fn concat(a: i64, b: i64) -> i64 {
-    // in my input, no number seems to be bigger than 999
-    debug_assert!(b < 10000);
-    if b >= 1000 {
-        a * 10000 + b
-    } else if b >= 100 {
-        a * 1000 + b
-    } else if b >= 10 {
-        a * 100 + b
-    } else {
-        a * 10 + b
+fn check(cur: u64, numbers: &[u64], i: usize, part1: bool) -> bool {
+    if !part1 {
+        // get number of digits
+        let mask = 10u64.pow(numbers[i].checked_ilog10().unwrap_or(0) + 1);
+        if cur > numbers[i] && (cur - numbers[i]) % mask == 0 {
+            // last n digits can be truncated
+            if i == 0 {
+                return cur == numbers[i];
+            }
+            if check(cur / mask, numbers, i - 1, part1) {
+                return true;
+            }
+        }
     }
-}
 
-fn check(result: i64, cur: i64, numbers: &[i64], part1: bool) -> bool {
-    if cur > result {
-        // since we only know addition, multiplication, and concatenation,
-        // `cur` can never be larger than `result`
-        false
-    } else if numbers.len() == 1 {
-        let nc = cur + numbers[0];
-        if nc == result {
+    if cur % numbers[i] == 0 {
+        // number is divisible
+        if i == 0 {
+            return cur == numbers[i];
+        }
+        if check(cur / numbers[i], numbers, i - 1, part1) {
             return true;
         }
-        let nc = cur * numbers[0];
-        if nc == result {
-            return true;
-        }
-        if !part1 {
-            let nc = concat(cur, numbers[0]);
-            if nc == result {
-                return true;
-            }
-        }
-        false
-    } else {
-        let nc = cur + numbers[0];
-        if check(result, nc, &numbers[1..], part1) {
-            return true;
-        }
-        let nc = cur * numbers[0];
-        if check(result, nc, &numbers[1..], part1) {
-            return true;
-        }
-        if !part1 {
-            let nc = concat(cur, numbers[0]);
-            if check(result, nc, &numbers[1..], part1) {
-                return true;
-            }
-        }
-        false
     }
+
+    if cur >= numbers[i] {
+        // we can subtract
+        if i == 0 {
+            return cur == numbers[i];
+        }
+        if check(cur - numbers[i], numbers, i - 1, part1) {
+            return true;
+        }
+    }
+
+    false
 }
 
 fn main() {
@@ -61,14 +45,14 @@ fn main() {
 
         let mut total = 0;
         for l in lines {
-            let (p, s) = l.split_once(": ").unwrap();
-            let p = p.parse::<i64>().unwrap();
-            let s = s
+            let (result, numbers) = l.split_once(": ").unwrap();
+            let result = result.parse::<u64>().unwrap();
+            let numbers = numbers
                 .split_whitespace()
-                .map(|p| p.parse::<i64>().unwrap())
+                .map(|o| o.parse::<u64>().unwrap())
                 .collect::<Vec<_>>();
-            if check(p, 0, &s, part1) {
-                total += p;
+            if check(result, &numbers, numbers.len() - 1, part1) {
+                total += result;
             }
         }
         println!("{}", total);
