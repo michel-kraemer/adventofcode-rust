@@ -1,65 +1,59 @@
-use std::{
-    collections::{HashMap, HashSet},
-    fs,
-};
+use std::fs;
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
-    let grid = input.lines().map(|l| l.as_bytes()).collect::<Vec<_>>();
+    let lines = input.lines().collect::<Vec<_>>();
+    let width = lines[0].len();
+    let height = lines.len();
+    let mut grid = lines
+        .iter()
+        .flat_map(|l| l.as_bytes())
+        .copied()
+        .collect::<Vec<_>>();
 
-    let mut positions: HashMap<u8, Vec<(i32, i32)>> = HashMap::new();
-    for (y, row) in grid.iter().enumerate() {
-        for (x, c) in row.iter().enumerate() {
-            if *c != b'.' {
-                positions.entry(*c).or_default().push((x as i32, y as i32));
+    let mut positions = [const { Vec::new() }; 128];
+    for y in 0..height {
+        for x in 0..width {
+            let c = grid[y * width + x];
+            if c != b'.' {
+                positions[c as usize].push((x as i32, y as i32));
             }
         }
     }
 
-    let mut antinodes_part1 = HashSet::new();
-    let mut antinodes_part2 = HashSet::new();
-    for antennas in positions.values() {
+    let mut antinodes_part1 = 0;
+    let mut antinodes_part2 = 0;
+    for antennas in positions {
         for i in 0..antennas.len() {
-            for j in i + 1..antennas.len() {
+            for j in 0..antennas.len() {
+                if i == j {
+                    continue;
+                }
+
                 let dx = antennas[j].0 - antennas[i].0;
                 let dy = antennas[j].1 - antennas[i].1;
-                let mut n = 1;
-                loop {
-                    let nxi = antennas[i].0 + dx * n;
-                    let nyi = antennas[i].1 + dy * n;
-                    let nxj = antennas[j].0 - dx * n;
-                    let nyj = antennas[j].1 - dy * n;
+                for n in 1..i32::MAX {
+                    let nx = antennas[i].0 + dx * n;
+                    let ny = antennas[i].1 + dy * n;
 
-                    let mut ok = 0;
-
-                    if nxi >= 0 && nyi >= 0 && nxi < grid[0].len() as i32 && nyi < grid.len() as i32
-                    {
-                        if n == 2 {
-                            antinodes_part1.insert((nxi, nyi));
+                    if nx >= 0 && ny >= 0 && nx < width as i32 && ny < height as i32 {
+                        let ni = ny as usize * width + nx as usize;
+                        if grid[ni] > 2 {
+                            antinodes_part2 += 1;
+                            grid[ni] = 2;
                         }
-                        antinodes_part2.insert((nxi, nyi));
-                        ok += 1;
-                    }
-
-                    if nxj >= 0 && nyj >= 0 && nxj < grid[0].len() as i32 && nyj < grid.len() as i32
-                    {
-                        if n == 2 {
-                            antinodes_part1.insert((nxj, nyj));
+                        if n == 2 && grid[ni] != 1 {
+                            antinodes_part1 += 1;
+                            grid[ni] = 1;
                         }
-                        antinodes_part2.insert((nxj, nyj));
-                        ok += 1;
-                    }
-
-                    if ok == 0 {
+                    } else {
                         break;
                     }
-
-                    n += 1;
                 }
             }
         }
     }
 
-    println!("{}", antinodes_part1.len());
-    println!("{}", antinodes_part2.len());
+    println!("{}", antinodes_part1);
+    println!("{}", antinodes_part2);
 }
