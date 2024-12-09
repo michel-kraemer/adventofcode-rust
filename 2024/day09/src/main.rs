@@ -1,4 +1,4 @@
-use std::fs;
+use std::{collections::BinaryHeap, fs};
 
 const SPACE: usize = usize::MAX;
 
@@ -7,7 +7,6 @@ struct Item {
     id: usize,
     pos: usize,
     len: usize,
-    filled: bool,
 }
 
 fn checksum(disk: &[Item]) -> usize {
@@ -57,7 +56,6 @@ fn part1(mut disk: Vec<Item>) -> usize {
                         id: f.id,
                         pos: result.len(),
                         len: space_len,
-                        filled: false,
                     });
                     disk[j].len -= space_len;
                     space_len = 0;
@@ -71,37 +69,39 @@ fn part1(mut disk: Vec<Item>) -> usize {
     checksum(&result)
 }
 
-fn part2(mut disk: Vec<Item>) -> usize {
-    let mut first_space = disk.len() - 2;
+fn part2(mut disk: Vec<Item>, mut space_index: [BinaryHeap<usize>; 10]) -> usize {
     let mut j = 0;
     while j < disk.len() {
         // get next file from back
         let f = disk[j];
 
         // find space where the file would fit completely
-        let mut found_first_space = false;
-        for i in (j + 1..=first_space).rev().step_by(2) {
-            if !found_first_space && disk[i].id == SPACE && disk[i].len > 0 {
-                first_space = i;
-                found_first_space = true;
-            }
-            if disk[i].id == SPACE && disk[i].len >= f.len {
-                // move file
-                disk[j].pos = disk[i].pos;
-
-                // make space before the moved file larger and merge with space after it
-                disk[j + 1].len += disk[j].len;
-                if j > 0 && !disk[j - 1].filled {
-                    disk[j + 1].len += disk[j - 1].len;
-                    disk[j - 1].len = 0;
+        let mut sii = usize::MAX;
+        let mut i = 0;
+        for (k, si) in space_index.iter_mut().enumerate().skip(f.len - 1) {
+            if let Some(np) = si.peek() {
+                // find left-most space
+                if *np > i {
+                    i = *np;
+                    sii = k;
                 }
+            }
+        }
 
-                // make new space smaller; mark it as filled so we won't
-                // merge it later
-                disk[i].len -= disk[j].len;
-                disk[i].filled = true;
+        if sii != usize::MAX && i > j {
+            // move file
+            disk[j].pos = disk[i].pos;
 
-                break;
+            // make space before the moved file larger
+            disk[j + 1].len += disk[j].len;
+
+            // make new space smaller
+            disk[i].len -= disk[j].len;
+
+            // update index
+            space_index[sii].pop();
+            if disk[i].len > 0 {
+                space_index[(disk[i].len - 1).min(9)].push(i);
             }
         }
 
@@ -117,17 +117,16 @@ fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
 
     let mut disk = Vec::new();
+    let mut space_index = [const { BinaryHeap::new() }; 10];
     let bytes = input.trim().as_bytes();
     let mut i = bytes.len() - 1;
     loop {
         let id = if i % 2 == 0 { i / 2 } else { SPACE };
         let len = (bytes[i] - b'0') as usize;
-        disk.push(Item {
-            id,
-            pos: i,
-            len,
-            filled: false,
-        });
+        disk.push(Item { id, pos: i, len });
+        if id == SPACE && len > 0 {
+            space_index[len - 1].push(bytes.len() - i - 1);
+        }
         if i == 0 {
             break;
         }
@@ -135,5 +134,5 @@ fn main() {
     }
 
     println!("{}", part1(disk.clone()));
-    println!("{}", part2(disk));
+    println!("{}", part2(disk, space_index));
 }
