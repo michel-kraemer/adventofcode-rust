@@ -1,22 +1,23 @@
 use std::fs;
 
-#[derive(Debug, Clone)]
-enum Item {
-    Space { len: usize },
-    File { id: usize, len: usize },
+const SPACE: usize = usize::MAX;
+
+#[derive(Debug, Copy, Clone)]
+struct Item {
+    id: usize,
+    len: usize,
 }
 
 fn checksum(disk: &[Item]) -> usize {
     let mut result = 0;
     let mut pos = 0;
     for d in disk {
-        match d {
-            Item::Space { len } => pos += len,
-            Item::File { id, len } => {
-                for _ in 0..*len {
-                    result += pos * id;
-                    pos += 1;
-                }
+        if d.id == SPACE {
+            pos += d.len;
+        } else {
+            for _ in 0..d.len {
+                result += pos * d.id;
+                pos += 1;
             }
         }
     }
@@ -30,13 +31,14 @@ fn main() {
     let mut chars = input.trim().chars();
     let mut id = 0;
     while let Some(file_len) = chars.next() {
-        orig_disk.push(Item::File {
+        orig_disk.push(Item {
             id,
             len: file_len.to_digit(10).unwrap() as usize,
         });
         id += 1;
         if let Some(space_len) = chars.next() {
-            orig_disk.push(Item::Space {
+            orig_disk.push(Item {
+                id: SPACE,
                 len: space_len.to_digit(10).unwrap() as usize,
             });
         } else {
@@ -44,37 +46,33 @@ fn main() {
         }
     }
 
-    // remove trailing space
-    while let Item::Space { .. } = orig_disk[orig_disk.len() - 1] {
-        orig_disk.remove(orig_disk.len() - 1);
-    }
-
     // part 1
-    let mut disk1 = orig_disk.clone();
+    let mut cloned_disk = orig_disk.clone();
+    let mut disk1 = Vec::new();
     let mut i = 0;
-    while i < disk1.len() {
-        if let Item::Space { len: mut space_len } = disk1[i] {
-            disk1.remove(i);
+    let mut j = cloned_disk.len() - 1;
+    while i <= j {
+        if cloned_disk[i].id != SPACE {
+            disk1.push(cloned_disk[i]);
+        } else {
+            let mut space_len = cloned_disk[i].len;
             while space_len > 0 {
-                let dl = disk1.len();
-                let Item::File {
-                    id,
-                    len: ref mut file_len,
-                } = disk1[dl - 1]
-                else {
-                    panic!("Last entry should always be a file");
-                };
-                if *file_len <= space_len {
-                    space_len -= *file_len;
-                    let f = disk1.remove(disk1.len() - 1);
-                    while let Item::Space { .. } = disk1[disk1.len() - 1] {
-                        disk1.remove(disk1.len() - 1);
-                    }
-                    disk1.insert(i, f);
-                    i += 1;
+                let mut f = cloned_disk[j];
+                while f.id == SPACE {
+                    j -= 1;
+                    f = cloned_disk[j];
+                }
+
+                if f.len <= space_len {
+                    space_len -= f.len;
+                    j -= 1;
+                    disk1.push(f);
                 } else {
-                    *file_len -= space_len;
-                    disk1.insert(i, Item::File { id, len: space_len });
+                    cloned_disk[j].len -= space_len;
+                    disk1.push(Item {
+                        id: f.id,
+                        len: space_len,
+                    });
                     space_len = 0;
                 }
             }
@@ -86,31 +84,29 @@ fn main() {
     println!("{}", total1);
 
     // part 2
-    let mut disk2 = orig_disk.clone();
+    let mut disk2 = orig_disk;
     let mut j = disk2.len() - 1;
     loop {
-        match disk2[j] {
-            Item::Space { .. } => {}
-            Item::File { id, len: file_len } => {
-                for i in 0..j {
-                    match disk2[i] {
-                        Item::File { .. } => continue,
-                        Item::Space { len: space_len } => {
-                            if space_len >= file_len {
-                                disk2[j] = Item::Space { len: file_len };
-                                disk2[i] = Item::File { id, len: file_len };
-                                if space_len > file_len {
-                                    disk2.insert(
-                                        i + 1,
-                                        Item::Space {
-                                            len: space_len - file_len,
-                                        },
-                                    );
-                                }
-                                break;
-                            }
-                        }
+        if disk2[j].id != SPACE {
+            let file_len = disk2[j].len;
+            for i in 0..j {
+                if disk2[i].id == SPACE && disk2[i].len >= disk2[j].len {
+                    let space_len = disk2[i].len;
+                    disk2[i] = Item {
+                        id: disk2[j].id,
+                        len: file_len,
+                    };
+                    disk2[j].id = SPACE;
+                    if space_len > file_len {
+                        disk2.insert(
+                            i + 1,
+                            Item {
+                                id: SPACE,
+                                len: space_len - file_len,
+                            },
+                        );
                     }
+                    break;
                 }
             }
         }
