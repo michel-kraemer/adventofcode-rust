@@ -1,116 +1,82 @@
-use std::{collections::BinaryHeap, fs};
-
-const SPACE: usize = usize::MAX;
+use std::{cmp::Reverse, collections::BinaryHeap, fs};
 
 #[derive(Debug, Copy, Clone)]
 struct Item {
-    id: usize,
     pos: usize,
     len: usize,
 }
 
-fn checksum(disk: &[Item]) -> usize {
+fn part1(mut disk: Vec<Item>) -> usize {
     let mut result = 0;
-    let mut pos = 0;
-    for d in disk {
-        if d.id == SPACE {
-            pos += d.len;
+    let mut i = 0;
+    let mut j = disk.len() - 1;
+
+    while i <= j {
+        if i % 2 == 0 {
+            // file: add checksum
+            for k in 0..disk[i].len {
+                result += (disk[i].pos + k) * i / 2;
+            }
         } else {
-            for _ in 0..d.len {
-                result += pos * d.id;
-                pos += 1;
+            // space: add checksum of blocks from the back
+            for k in 0..disk[i].len {
+                result += (disk[i].pos + k) * j / 2;
+                disk[j].len -= 1;
+                if disk[j].len == 0 {
+                    j -= 2;
+                }
             }
         }
+
+        i += 1;
     }
+
     result
 }
 
-fn part1(mut disk: Vec<Item>) -> usize {
-    let mut result = Vec::new();
-    let mut i = disk.len() - 1;
-    let mut j = 0;
+fn part2(disk: Vec<Item>, mut space_index: [BinaryHeap<Reverse<usize>>; 10]) -> usize {
+    let mut result = 0;
+    let mut j = disk.len() - 1;
 
-    while i >= j {
-        if disk[i].id != SPACE {
-            // just copy files
-            result.push(disk[i]);
-        } else {
-            // we found space that needs to be filled: copy blocks from
-            // files from the back
-            let mut space_len = disk[i].len;
-            while space_len > 0 {
-                // first file from back
-                if j >= i {
-                    break;
-                }
-                let f = disk[j];
-
-                if f.len <= space_len {
-                    // file fits completely into space
-                    space_len -= f.len;
-                    result.push(f);
-                    j += 2; // next file - skip space
-                } else {
-                    // file is larger than space: copy as many blocks as possible
-                    result.push(Item {
-                        id: f.id,
-                        pos: result.len(),
-                        len: space_len,
-                    });
-                    disk[j].len -= space_len;
-                    space_len = 0;
-                }
-            }
-        }
-
-        i -= 1;
-    }
-
-    checksum(&result)
-}
-
-fn part2(mut disk: Vec<Item>, mut space_index: [BinaryHeap<usize>; 10]) -> usize {
-    let mut j = 0;
-    while j < disk.len() {
+    while j > 0 {
         // get next file from back
         let f = disk[j];
 
         // find space where the file would fit completely
         let mut sii = usize::MAX;
-        let mut i = 0;
-        for (k, si) in space_index.iter_mut().enumerate().skip(f.len - 1) {
-            if let Some(np) = si.peek() {
+        let mut i = usize::MAX;
+        for (k, si) in space_index.iter_mut().enumerate().skip(f.len) {
+            if let Some(Reverse(np)) = si.peek() {
                 // find left-most space
-                if *np > i {
+                if *np < i {
                     i = *np;
                     sii = k;
                 }
             }
         }
 
-        if sii != usize::MAX && i > j {
+        let pos = if sii != usize::MAX && i < f.pos {
             // move file
-            disk[j].pos = disk[i].pos;
-
-            // make space before the moved file larger
-            disk[j + 1].len += disk[j].len;
-
-            // make new space smaller
-            disk[i].len -= disk[j].len;
-
-            // update index
             space_index[sii].pop();
-            if disk[i].len > 0 {
-                space_index[(disk[i].len - 1).min(9)].push(i);
+            let new_len = sii - f.len;
+            if new_len > 0 {
+                space_index[new_len].push(Reverse(i + f.len));
             }
+            i
+        } else {
+            // file has to stay where it is
+            f.pos
+        };
+
+        // add checksum
+        for k in 0..f.len {
+            result += (pos + k) * j / 2;
         }
 
-        j += 2; // next file - skip space
+        j -= 2; // next file - skip space
     }
 
-    disk.sort_by_key(|i| i.pos); // stable sort!
-
-    checksum(&disk)
+    result
 }
 
 fn main() {
@@ -119,18 +85,14 @@ fn main() {
     let mut disk = Vec::new();
     let mut space_index = [const { BinaryHeap::new() }; 10];
     let bytes = input.trim().as_bytes();
-    let mut i = bytes.len() - 1;
-    loop {
-        let id = if i % 2 == 0 { i / 2 } else { SPACE };
-        let len = (bytes[i] - b'0') as usize;
-        disk.push(Item { id, pos: i, len });
-        if id == SPACE && len > 0 {
-            space_index[len - 1].push(bytes.len() - i - 1);
+    let mut pos = 0;
+    for b in bytes {
+        let len = (b - b'0') as usize;
+        disk.push(Item { pos, len });
+        if disk.len() % 2 == 0 && len > 0 {
+            space_index[len].push(Reverse(pos));
         }
-        if i == 0 {
-            break;
-        }
-        i -= 1;
+        pos += len;
     }
 
     println!("{}", part1(disk.clone()));
