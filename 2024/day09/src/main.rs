@@ -24,6 +24,9 @@ fn part1(mut disk: Vec<Item>) -> usize {
                 disk[j].len -= 1;
                 if disk[j].len == 0 {
                     j -= 2;
+                    if i > j {
+                        break;
+                    }
                 }
             }
         }
