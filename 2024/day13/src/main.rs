@@ -1,3 +1,31 @@
+//! We just need to solve a linear equation system with two equations and two
+//! unknowns. The equations can actually be found in the problem statement:
+//!
+//!     ma * bax + mb * bbx = pzx
+//!     ma * bay + mb * bby = pzy
+//!
+//! Where `ma` and `mb` are the number of times button A and B need to be
+//! pressed, respectively. `bax`, `bay`, `bbx`, `bby` are the increments for
+//! each button, and `pzx` and `pzy` are the coordinates of the prize.
+//!
+//! Rearrange the second equation for `ma`:
+//!
+//!     ma = (pzy - mb * bby) / bay
+//!
+//! Substitute `ma` in the first equation and rearrange for `mb`:
+//!
+//!     ((pzy - mb * bby) / bay) * bax + mb * bbx = pzx
+//!     => (pzy - mb * bby) * bax / bay + mb * bbx = pzx
+//!     => (bax * pzy - mb * bax * bby) / bay + mb * bbx = pzx
+//!     => (bax * pzy - mb * bax * bby) / bay + (mb * bay * bbx) / bay = pzx
+//!     => (bax * pzy - mb * bax * bby + mb * bay * bbx) / bay = pzx
+//!     => bax * pzy - mb * bax * bby + mb * bay * bbx = pzx * bay
+//!     => -mb * bax * bby + mb * bay * bbx = pzx * bay - bax * pzy
+//!     => mb * bay * bbx - mb * bax * bby = pzx * bay - pzy * bax
+//!     => mb * (bay * bbx - bax * bby) = pzx * bay - pzy * bax
+//!     
+//!     mb = (pzx * bay - pzy * bax) / (bay * bbx - bax * bby)
+//!
 use std::fs;
 
 fn main() {
