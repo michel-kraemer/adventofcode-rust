@@ -1,4 +1,7 @@
-use std::fs;
+use screen::Screen;
+use std::{env, fs};
+
+mod screen;
 
 fn is_movable_vertical(grid: &[u8], w: usize, b: (usize, usize), y: usize, dy: isize) -> bool {
     let ny = y.checked_add_signed(dy).unwrap();
@@ -92,6 +95,7 @@ fn run_instructions(
     mut grid: Vec<u8>,
     w: usize,
     h: usize,
+    screen: &mut Option<Screen>,
 ) -> usize {
     for instr in instructions {
         match instr {
@@ -136,6 +140,12 @@ fn run_instructions(
 
             _ => panic!("Unknown instruction: {}", instr),
         }
+
+        if let Some(ref mut screen) = screen {
+            grid[pos.1 * w + pos.0] = b'@';
+            screen.update(&grid);
+            grid[pos.1 * w + pos.0] = b'.';
+        }
     }
 
     let mut total = 0;
@@ -152,6 +162,9 @@ fn run_instructions(
 }
 
 fn main() {
+    // should the grid be visualized on the terminal?
+    let visualize = env::var("AOC_DAY15_VISUALIZE").is_ok();
+
     for part1 in [true, false] {
         let input = fs::read_to_string("input.txt").expect("Could not read file");
         let (grid, instructions) = input.split_once("\n\n").unwrap();
@@ -197,6 +210,12 @@ fn main() {
             grid = wider_grid;
         }
 
+        let mut screen = if visualize {
+            Some(Screen::new(width, height))
+        } else {
+            None
+        };
+
         // find robot
         let mut pos = (0, 0);
         'outer: for y in 0..height {
@@ -209,7 +228,12 @@ fn main() {
         }
         grid[pos.1 * width + pos.0] = b'.';
 
-        let total = run_instructions(pos, instructions, grid, width, height);
+        let total = run_instructions(pos, instructions, grid, width, height, &mut screen);
+
+        if let Some(mut screen) = screen {
+            screen.finish();
+        }
+
         println!("{}", total);
     }
 }
