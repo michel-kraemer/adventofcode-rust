@@ -73,18 +73,16 @@ fn move_vertical(grid: &mut [u8], w: usize, b: (usize, usize), y: usize, dy: isi
 }
 
 fn move_horizontal(grid: &mut [u8], w: usize, pos: (usize, usize), dx: isize) {
-    let sx = pos.0.checked_add_signed(dx).unwrap();
-    let mut x = sx;
-    while grid[pos.1 * w + x] == b'O' || grid[pos.1 * w + x] == b'[' || grid[pos.1 * w + x] == b']'
-    {
-        x = x.checked_add_signed(dx).unwrap();
+    let sx = pos.1 * w + pos.0.checked_add_signed(dx).unwrap();
+    let mut i = sx;
+    while grid[i] == b'O' || grid[i] == b'[' || grid[i] == b']' {
+        i = i.checked_add_signed(dx).unwrap();
     }
-    if x != sx && grid[pos.1 * w + x] == b'.' {
-        while x != sx {
-            let mx = x.checked_add_signed(-(dx - 1) / 2).unwrap();
-            let (l, r) = grid.split_at_mut(pos.1 * w + mx);
-            std::mem::swap(&mut l[l.len() - 1], &mut r[0]);
-            x = x.checked_add_signed(-dx).unwrap();
+    if i != sx && grid[i] == b'.' {
+        if i < sx {
+            grid.copy_within(i + 1..=sx + 1, i);
+        } else {
+            grid.copy_within(sx - 1..i, sx);
         }
     }
 }
