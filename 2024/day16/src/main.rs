@@ -1,15 +1,15 @@
 use std::cmp::Reverse;
-use std::collections::BinaryHeap;
+use std::collections::{BinaryHeap, VecDeque};
 use std::fs;
+
+const DIRS: [(i32, i32); 4] = [(1, 0), (0, 1), (-1, 0), (0, -1)];
 
 #[derive(PartialEq, Eq)]
 struct State {
     score: usize,
     x: i32,
     y: i32,
-    dx: i32,
-    dy: i32,
-    path: Vec<(i32, i32)>,
+    di: usize,
 }
 
 impl Ord for State {
@@ -35,46 +35,40 @@ fn main() {
         .copied()
         .collect::<Vec<_>>();
 
-    // find start
+    // find start and end
     let mut start = (0, 0);
-    'outer: for y in 0..height {
+    let mut end = (0, 0);
+    for y in 0..height {
         for x in 0..width {
             if grid[y * width + x] == b'S' {
                 start = (x as i32, y as i32);
-                break 'outer;
+            } else if grid[y * width + x] == b'E' {
+                end = (x as i32, y as i32);
             }
         }
     }
 
-    // start facing east
-    let mut queue = BinaryHeap::new();
-    let start = State {
+    let mut heap = BinaryHeap::new();
+    let start_state = State {
         score: 0,
         x: start.0,
         y: start.1,
-        dx: 1,
-        dy: 0,
-        path: Vec::new(),
+        di: 0, // start facing east
     };
-    queue.push(Reverse(start));
+    heap.push(Reverse(start_state));
 
-    // a mapping of seen places and their lowest score
-    let mut seen = vec![usize::MAX - 1000; width * height];
+    // a mapping of seen places and directions to their lowest score
+    let mut seen = vec![usize::MAX; width * height * DIRS.len()];
 
     // the minimum score it takes to get to the end
     let mut min = usize::MAX;
-
-    // all best paths we have found
-    let mut paths = Vec::new();
 
     while let Some(Reverse(State {
         score,
         x,
         y,
-        dx: prev_dx,
-        dy: prev_dy,
-        path,
-    })) = queue.pop()
+        di: prev_di,
+    })) = heap.pop()
     {
         if grid[y as usize * width + x as usize] == b'E' {
             if score > min {
@@ -82,59 +76,62 @@ fn main() {
                 // We can break here. No other path will be better.
                 break;
             }
-            paths.push(path.clone());
             min = score;
         }
 
-        for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
-            let nx = x + dx;
-            let ny = y + dy;
+        for (di, (dx, dy)) in DIRS.iter().enumerate() {
+            if (prev_di + 2) % DIRS.len() == di {
+                // don't go back
+                continue;
+            }
 
-            let nscore = if (prev_dx == 0 && prev_dy == 0) || dx == prev_dx && dy == prev_dy {
+            let nscore = if di == prev_di {
+                // walk forwards
                 score + 1
             } else {
+                // turn and take one step
                 score + 1001
             };
 
-            let last_seen_score = seen[ny as usize * width + nx as usize];
+            let nx = x + dx;
+            let ny = y + dy;
 
-            if nx >= 0
-                && ny >= 0
-                && nx < width as i32
-                && ny < height as i32
-                && grid[ny as usize * width + nx as usize] != b'#'
-                // don't go back
-                && !(prev_dx == 0 && prev_dy == -dy)
-                && !(prev_dx == -dx && prev_dy == 0)
-                // we might have stepped on a path where we were just about to turn
-                // just continue and see how it goes
-                && nscore <= last_seen_score + 1000
-            {
-                seen[ny as usize * width + nx as usize] = nscore;
+            let gi = ny as usize * width + nx as usize;
+            let si = gi * DIRS.len() + di;
+            let last_seen_score = seen[si];
 
-                // SLOW!
-                let mut new_path = path.clone();
-                new_path.push((nx, ny));
+            if grid[gi] != b'#' && nscore <= last_seen_score {
+                // save score for this place and direction
+                seen[si] = nscore;
 
-                queue.push(Reverse(State {
+                heap.push(Reverse(State {
                     score: nscore,
                     x: nx,
                     y: ny,
-                    dx,
-                    dy,
-                    path: new_path,
+                    di,
                 }));
             }
         }
     }
 
+    // backtrack best paths from the end position to the start
+    let mut total = 1; // include end position
     let mut places_to_sit = vec![false; width * height];
-    let mut total = 0;
-    for p in &paths {
-        for &(x, y) in p {
-            if !places_to_sit[y as usize * width + x as usize] {
-                places_to_sit[y as usize * width + x as usize] = true;
-                total += 1;
+    let mut queue = VecDeque::new();
+    queue.push_back((end, min));
+    while let Some((node, score)) = queue.pop_front() {
+        for di in 0..DIRS.len() {
+            let next_score = seen[(node.1 as usize * width + node.0 as usize) * DIRS.len() + di];
+            if next_score <= score {
+                // walk back
+                let nextx = node.0 - DIRS[di].0;
+                let nexty = node.1 - DIRS[di].1;
+
+                if !places_to_sit[nexty as usize * width + nextx as usize] {
+                    places_to_sit[nexty as usize * width + nextx as usize] = true;
+                    total += 1;
+                    queue.push_back(((nextx, nexty), next_score));
+                }
             }
         }
     }
@@ -143,5 +140,5 @@ fn main() {
     println!("{}", min);
 
     // part 2
-    println!("{}", total + 1);
+    println!("{}", total);
 }
