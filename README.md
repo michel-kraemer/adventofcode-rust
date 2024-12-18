@@ -21,7 +21,7 @@ challenge.
   [bit operations](2023/day21/src/bitarray.rs) to simulate the cellular
   automaton, which allowed me to implement a fast and generalized solution
   that should work on any input.
-* [Day 25 of 2013](2023/day25/src/main.rs): Using
+* [Day 25 of 2023](2023/day25/src/main.rs): Using
   [Brandes' algorithm](https://doi.org/10.1080/0022250X.2001.9990249) to
   quickly calculate the betweenness centrality of graph nodes.
 
