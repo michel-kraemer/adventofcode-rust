@@ -1,7 +1,11 @@
 use std::collections::HashMap;
 use std::fs;
 
-fn dfs<'a>(design: &'a str, patterns: &[&str], cache: &mut HashMap<&'a str, usize>) -> usize {
+use trie::Trie;
+
+mod trie;
+
+fn dfs<'a>(design: &'a str, patterns: &Trie, cache: &mut HashMap<&'a str, usize>) -> usize {
     if design.is_empty() {
         return 1;
     }
@@ -11,10 +15,8 @@ fn dfs<'a>(design: &'a str, patterns: &[&str], cache: &mut HashMap<&'a str, usiz
     }
 
     let mut r = 0;
-    for t in patterns {
-        if let Some(rest) = design.strip_prefix(t) {
-            r += dfs(rest, patterns, cache);
-        }
+    for l in patterns.common_prefix_lengths(design) {
+        r += dfs(&design[l..], patterns, cache);
     }
 
     cache.insert(design, r);
@@ -28,11 +30,18 @@ fn main() {
     let patterns = lines[0].split(", ").collect::<Vec<_>>();
     let designs = &lines[2..];
 
+    // create index structure that allows us to quickly search for common
+    // prefix lengths
+    let mut trie = Trie::default();
+    for p in &patterns {
+        trie.insert(p);
+    }
+
     let mut seen = HashMap::new();
     let mut total1 = 0;
     let mut total2 = 0;
     for d in designs {
-        let c = dfs(d, &patterns, &mut seen);
+        let c = dfs(d, &trie, &mut seen);
         if c > 0 {
             total1 += 1;
             total2 += c;
