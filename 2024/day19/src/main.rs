@@ -4,7 +4,7 @@ use trie::Trie;
 
 mod trie;
 
-fn dfs(design: &str, patterns: &Trie, cache: &mut [usize]) -> usize {
+fn dfs(design: &[u8], patterns: &Trie, cache: &mut [usize]) -> usize {
     if design.is_empty() {
         return 1;
     }
@@ -15,7 +15,8 @@ fn dfs(design: &str, patterns: &Trie, cache: &mut [usize]) -> usize {
     }
 
     let mut r = 0;
-    for l in patterns.common_prefix_lengths(design) {
+    // optimization: try the longest prefixes first
+    for l in patterns.common_prefix_lengths(design).into_iter().rev() {
         r += dfs(&design[l..], patterns, cache);
     }
 
@@ -27,7 +28,10 @@ fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
     let lines = input.lines().collect::<Vec<_>>();
 
-    let patterns = lines[0].split(", ").collect::<Vec<_>>();
+    let patterns = lines[0]
+        .split(", ")
+        .map(|p| p.as_bytes())
+        .collect::<Vec<_>>();
     let designs = &lines[2..];
 
     // create index structure that allows us to quickly search for common
@@ -39,9 +43,11 @@ fn main() {
 
     let mut total1 = 0;
     let mut total2 = 0;
+    let mut cache = vec![usize::MAX; 100];
     for d in designs {
-        let mut cache = vec![usize::MAX; d.len()];
-        let c = dfs(d, &trie, &mut cache);
+        cache.fill(usize::MAX);
+        cache.resize(cache.len().max(d.len()), usize::MAX);
+        let c = dfs(d.as_bytes(), &trie, &mut cache);
         if c > 0 {
             total1 += 1;
             total2 += c;

@@ -25,16 +25,16 @@ impl Trie {
     }
 
     /// Insert a prefix into the tree
-    pub fn insert(&mut self, s: &str) {
+    pub fn insert(&mut self, s: &[u8]) {
         let mut current_node = 0;
 
-        for c in s.chars() {
+        for c in s {
             debug_assert!(
                 c.is_ascii_lowercase(),
-                "This trie implementation can only ASCII lowercase characters"
+                "This trie implementation only supports ASCII lowercase characters"
             );
 
-            let i = (c as u8 - b'a') as usize;
+            let i = (c - b'a') as usize;
             if self.nodes[current_node].children[i] == 0 {
                 self.nodes[current_node].children[i] = self.nodes.len();
                 self.nodes.push(Node::default());
@@ -48,21 +48,21 @@ impl Trie {
 
     /// Look for prefixes of the given string and return their lengths. If
     /// there is no prefix, an empty Vec will be returned.
-    pub fn common_prefix_lengths(&self, s: &str) -> Vec<usize> {
+    pub fn common_prefix_lengths(&self, s: &[u8]) -> Vec<usize> {
         let mut result = Vec::new();
         let mut current_node = 0;
 
-        for (len, c) in s.chars().enumerate() {
+        for (len, c) in s.iter().enumerate() {
             debug_assert!(
                 c.is_ascii_lowercase(),
-                "This trie implementation can only ASCII lowercase characters"
+                "This trie implementation only supports ASCII lowercase characters"
             );
 
             if self.nodes[current_node].end {
                 result.push(len);
             }
 
-            let i = (c as u8 - b'a') as usize;
+            let i = (c - b'a') as usize;
             if self.nodes[current_node].children[i] == 0 {
                 // nothing else to find
                 return result;
@@ -86,23 +86,23 @@ mod tests {
     #[test]
     fn common_prefix_lengths() {
         let mut t = Trie::default();
-        t.insert("foo");
-        t.insert("foobar");
-        t.insert("bar");
-        t.insert("bra");
-        t.insert("foobarfoo");
-        t.insert("fool");
-        t.insert("foofoo");
-        t.insert("foono");
-        t.insert("other");
+        t.insert(b"foo");
+        t.insert(b"foobar");
+        t.insert(b"bar");
+        t.insert(b"bra");
+        t.insert(b"foobarfoo");
+        t.insert(b"fool");
+        t.insert(b"foofoo");
+        t.insert(b"foono");
+        t.insert(b"other");
 
-        assert_eq!(t.common_prefix_lengths("fo"), vec![]);
-        assert_eq!(t.common_prefix_lengths("foo"), vec![3]);
-        assert_eq!(t.common_prefix_lengths("fool"), vec![3, 4]);
-        assert_eq!(t.common_prefix_lengths("foofoo"), vec![3, 6]);
-        assert_eq!(t.common_prefix_lengths("foobar"), vec![3, 6]);
-        assert_eq!(t.common_prefix_lengths("foobarbar"), vec![3, 6]);
-        assert_eq!(t.common_prefix_lengths("foobarfoo"), vec![3, 6, 9]);
-        assert_eq!(t.common_prefix_lengths("foobarfool"), vec![3, 6, 9]);
+        assert_eq!(t.common_prefix_lengths(b"fo"), vec![]);
+        assert_eq!(t.common_prefix_lengths(b"foo"), vec![3]);
+        assert_eq!(t.common_prefix_lengths(b"fool"), vec![3, 4]);
+        assert_eq!(t.common_prefix_lengths(b"foofoo"), vec![3, 6]);
+        assert_eq!(t.common_prefix_lengths(b"foobar"), vec![3, 6]);
+        assert_eq!(t.common_prefix_lengths(b"foobarbar"), vec![3, 6]);
+        assert_eq!(t.common_prefix_lengths(b"foobarfoo"), vec![3, 6, 9]);
+        assert_eq!(t.common_prefix_lengths(b"foobarfool"), vec![3, 6, 9]);
     }
 }
