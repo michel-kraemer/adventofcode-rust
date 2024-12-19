@@ -15,8 +15,7 @@ fn dfs(design: &[u8], patterns: &Trie, cache: &mut [usize]) -> usize {
     }
 
     let mut r = 0;
-    // optimization: try the longest prefixes first
-    for l in patterns.common_prefix_lengths(design).into_iter().rev() {
+    for l in patterns.common_prefix_lengths(design) {
         r += dfs(&design[l..], patterns, cache);
     }
 
@@ -37,7 +36,7 @@ fn main() {
     // create index structure that allows us to quickly search for common
     // prefix lengths
     let mut trie = Trie::default();
-    for p in &patterns {
+    for p in patterns {
         trie.insert(p);
     }
 
