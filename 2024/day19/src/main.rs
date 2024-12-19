@@ -1,17 +1,17 @@
-use std::collections::HashMap;
 use std::fs;
 
 use trie::Trie;
 
 mod trie;
 
-fn dfs<'a>(design: &'a str, patterns: &Trie, cache: &mut HashMap<&'a str, usize>) -> usize {
+fn dfs(design: &str, patterns: &Trie, cache: &mut [usize]) -> usize {
     if design.is_empty() {
         return 1;
     }
 
-    if let Some(c) = cache.get(design) {
-        return *c;
+    let c = cache[design.len() - 1];
+    if c != usize::MAX {
+        return c;
     }
 
     let mut r = 0;
@@ -19,7 +19,7 @@ fn dfs<'a>(design: &'a str, patterns: &Trie, cache: &mut HashMap<&'a str, usize>
         r += dfs(&design[l..], patterns, cache);
     }
 
-    cache.insert(design, r);
+    cache[design.len() - 1] = r;
     r
 }
 
@@ -37,11 +37,11 @@ fn main() {
         trie.insert(p);
     }
 
-    let mut seen = HashMap::new();
     let mut total1 = 0;
     let mut total2 = 0;
     for d in designs {
-        let c = dfs(d, &trie, &mut seen);
+        let mut cache = vec![usize::MAX; d.len()];
+        let c = dfs(d, &trie, &mut cache);
         if c > 0 {
             total1 += 1;
             total2 += c;
