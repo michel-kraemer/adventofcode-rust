@@ -82,26 +82,53 @@ fn main() {
         }
     }
 
+    // find path from start to end
     let path = find_non_branching_path(&grid, width, start, end);
     let max = path.len() - 1;
 
+    // Insert waypoints into an index. This allows us to limit the number of
+    // neighbors we need to check later.
+    let cell_size = 20;
+    let cells_x = (width + cell_size - 1) / cell_size;
+    let cells_y = (height + cell_size - 1) / cell_size;
+    let mut cells = vec![vec![]; cells_x * cells_y];
+    for (i, &(px, py)) in path.iter().enumerate() {
+        cells[(py / cell_size) * cells_x + (px / cell_size)].push((i, px, py));
+    }
+
+    // For each pair of waypoint and neighbor, check if their distance is less
+    // than or equal to 2 (part 1) or 20 (part 2). If so, check if shortcutting
+    // from the waypoint to the neighbor would actually make the path shorter.
     let mut total1 = 0;
     let mut total2 = 0;
-    for i in 0..path.len() {
-        for j in i + 101..path.len() {
-            let s = path[i];
-            let e = path[j];
-            let dist = s.0.abs_diff(e.0) + s.1.abs_diff(e.1);
-            let m = max - (j - i) + dist;
-            if m >= max || max - m < 100 {
-                continue;
-            }
+    for cy in 0..cells_y {
+        for cx in 0..cells_x {
+            let min_cx = cx.saturating_sub(1);
+            let max_cx = (cells_x - 1).min(cx + 1);
+            let min_cy = cy.saturating_sub(1);
+            let max_cy = (cells_y - 1).min(cy + 1);
 
-            if dist <= 2 {
-                total1 += 1;
-            }
-            if dist <= 20 {
-                total2 += 1;
+            while !cells[cy * cells_x + cx].is_empty() {
+                let (si, sx, sy) = cells[cy * cells_x + cx].swap_remove(0);
+
+                for cy2 in min_cy..=max_cy {
+                    for cx2 in min_cx..=max_cx {
+                        for &(ei, ex, ey) in &cells[cy2 * cells_x + cx2] {
+                            let dist = sx.abs_diff(ex) + sy.abs_diff(ey);
+                            let m = max - ei.abs_diff(si) + dist;
+                            if m >= max || max - m < 100 {
+                                continue;
+                            }
+
+                            if dist <= 2 {
+                                total1 += 1;
+                            }
+                            if dist <= 20 {
+                                total2 += 1;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
