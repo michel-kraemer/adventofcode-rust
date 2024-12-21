@@ -1,9 +1,34 @@
 use std::collections::{HashMap, VecDeque};
 use std::fs;
+use std::rc::Rc;
 
 pub const DIRS: [(i32, i32); 4] = [(1, 0), (0, 1), (-1, 0), (0, -1)];
 
-fn find_shortest_paths(keypad: &[[u8; 3]], from: u8, to: u8) -> Vec<Vec<u8>> {
+const NUMERIC: [[u8; 3]; 4] = [
+    [b'7', b'8', b'9'],
+    [b'4', b'5', b'6'],
+    [b'1', b'2', b'3'],
+    [b' ', b'0', b'A'],
+];
+
+const DIRECTIONAL: [[u8; 3]; 2] = [[b' ', b'^', b'A'], [b'<', b'v', b'>']];
+
+fn find_shortest_paths(
+    keypad: &[[u8; 3]],
+    from: u8,
+    to: u8,
+    cache: &mut HashMap<(u8, u8), Rc<Vec<Vec<u8>>>>,
+) -> Rc<Vec<Vec<u8>>> {
+    if let Some(cached) = cache.get(&(from, to)) {
+        return cached.clone();
+    }
+
+    if from == to {
+        let result = Rc::new(vec![vec![b'A']]);
+        cache.insert((from, to), result.clone());
+        return result;
+    }
+
     // find 'from' and 'to' on keypad
     let mut start = (0, 0);
     let mut end = (0, 0);
@@ -16,10 +41,6 @@ fn find_shortest_paths(keypad: &[[u8; 3]], from: u8, to: u8) -> Vec<Vec<u8>> {
                 end = (x, y);
             }
         }
-    }
-
-    if start == end {
-        return vec![vec![b'A']];
     }
 
     // flood fill keypad to find the shortest distances
@@ -77,7 +98,9 @@ fn find_shortest_paths(keypad: &[[u8; 3]], from: u8, to: u8) -> Vec<Vec<u8>> {
         }
     }
 
-    paths
+    let result = Rc::new(paths);
+    cache.insert((from, to), result.clone());
+    result
 }
 
 fn find_shortest_sequence(
@@ -85,9 +108,8 @@ fn find_shortest_sequence(
     depth: usize,
     highest: bool,
     cursors: &mut Vec<u8>,
-    numeric: &[[u8; 3]],
-    directional: &[[u8; 3]],
     cache: &mut HashMap<(Vec<u8>, usize, u8), usize>,
+    path_cache: &mut HashMap<(u8, u8), Rc<Vec<Vec<u8>>>>,
 ) -> usize {
     let cache_key = (s.to_vec(), depth, cursors[depth]);
     if let Some(cached) = cache.get(&cache_key) {
@@ -97,26 +119,18 @@ fn find_shortest_sequence(
     let mut result = 0;
     for &c in s {
         let paths = find_shortest_paths(
-            if highest { numeric } else { directional },
+            if highest { &NUMERIC } else { &DIRECTIONAL },
             cursors[depth],
             c,
+            path_cache,
         );
         if depth == 0 {
-            result += paths.into_iter().map(|l| l.len()).min().unwrap();
+            // all paths have the same length
+            result += paths[0].len();
         } else {
             result += paths
-                .into_iter()
-                .map(|p| {
-                    find_shortest_sequence(
-                        &p,
-                        depth - 1,
-                        false,
-                        cursors,
-                        numeric,
-                        directional,
-                        cache,
-                    )
-                })
+                .iter()
+                .map(|p| find_shortest_sequence(p, depth - 1, false, cursors, cache, path_cache))
                 .min()
                 .unwrap();
         }
@@ -129,18 +143,11 @@ fn find_shortest_sequence(
 }
 
 fn main() {
-    let numeric = vec![
-        [b'7', b'8', b'9'],
-        [b'4', b'5', b'6'],
-        [b'1', b'2', b'3'],
-        [b' ', b'0', b'A'],
-    ];
-
-    let directional = vec![[b' ', b'^', b'A'], [b'<', b'v', b'>']];
-
     let input = fs::read_to_string("input.txt").expect("Could not read file");
     let lines = input.lines().collect::<Vec<_>>();
+
     let mut cache = HashMap::new();
+    let mut path_cache = HashMap::new();
 
     for part1 in [true, false] {
         let max_depth = if part1 { 2 } else { 25 };
@@ -153,9 +160,8 @@ fn main() {
                 max_depth,
                 true,
                 &mut cursors,
-                &numeric,
-                &directional,
                 &mut cache,
+                &mut path_cache,
             );
 
             let n = l[0..3].parse::<usize>().unwrap();
