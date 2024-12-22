@@ -17,13 +17,13 @@ fn main() {
         let mut old_price = n % 10;
         for i in 0..2000 {
             n ^= n << 6;
-            n %= 16777216;
+            n &= 16777215; // same as `% 16777216` but faster
 
             n ^= n >> 5;
-            n %= 16777216;
+            // n &= 16777215; // unnecessary
 
             n ^= n << 11;
-            n %= 16777216;
+            n &= 16777215;
 
             let price = n % 10;
             let diff = price - old_price;
