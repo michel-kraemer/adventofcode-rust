@@ -17,15 +17,15 @@ fn find_shortest_paths(
     keypad: &[[u8; 3]],
     from: u8,
     to: u8,
-    cache: &mut HashMap<(u8, u8), Rc<Vec<Vec<u8>>>>,
+    cache: &mut [Option<Rc<Vec<Vec<u8>>>>; 128 * 128],
 ) -> Rc<Vec<Vec<u8>>> {
-    if let Some(cached) = cache.get(&(from, to)) {
+    if let Some(cached) = &cache[from as usize * 128 + to as usize] {
         return cached.clone();
     }
 
     if from == to {
         let result = Rc::new(vec![vec![b'A']]);
-        cache.insert((from, to), result.clone());
+        cache[from as usize * 128 + to as usize] = Some(result.clone());
         return result;
     }
 
@@ -99,7 +99,7 @@ fn find_shortest_paths(
     }
 
     let result = Rc::new(paths);
-    cache.insert((from, to), result.clone());
+    cache[from as usize * 128 + to as usize] = Some(result.clone());
     result
 }
 
@@ -107,20 +107,20 @@ fn find_shortest_sequence(
     s: &[u8],
     depth: usize,
     highest: bool,
-    cursors: &mut Vec<u8>,
-    cache: &mut HashMap<(Vec<u8>, usize, u8), usize>,
-    path_cache: &mut HashMap<(u8, u8), Rc<Vec<Vec<u8>>>>,
+    cache: &mut HashMap<(Vec<u8>, usize), usize>,
+    path_cache: &mut [Option<Rc<Vec<Vec<u8>>>>; 128 * 128],
 ) -> usize {
-    let cache_key = (s.to_vec(), depth, cursors[depth]);
+    let cache_key = (s.to_vec(), depth);
     if let Some(cached) = cache.get(&cache_key) {
         return *cached;
     }
 
+    let mut cursor = b'A';
     let mut result = 0;
     for &c in s {
         let paths = find_shortest_paths(
             if highest { &NUMERIC } else { &DIRECTIONAL },
-            cursors[depth],
+            cursor,
             c,
             path_cache,
         );
@@ -130,11 +130,11 @@ fn find_shortest_sequence(
         } else {
             result += paths
                 .iter()
-                .map(|p| find_shortest_sequence(p, depth - 1, false, cursors, cache, path_cache))
+                .map(|p| find_shortest_sequence(p, depth - 1, false, cache, path_cache))
                 .min()
                 .unwrap();
         }
-        cursors[depth] = c;
+        cursor = c;
     }
 
     cache.insert(cache_key, result);
@@ -147,22 +147,15 @@ fn main() {
     let lines = input.lines().collect::<Vec<_>>();
 
     let mut cache = HashMap::new();
-    let mut path_cache = HashMap::new();
+    let mut path_cache = [const { None }; 128 * 128];
 
     for part1 in [true, false] {
         let max_depth = if part1 { 2 } else { 25 };
 
         let mut total = 0;
         for l in &lines {
-            let mut cursors = vec![b'A'; max_depth + 1];
-            let len = find_shortest_sequence(
-                l.as_bytes(),
-                max_depth,
-                true,
-                &mut cursors,
-                &mut cache,
-                &mut path_cache,
-            );
+            let len =
+                find_shortest_sequence(l.as_bytes(), max_depth, true, &mut cache, &mut path_cache);
 
             let n = l[0..3].parse::<usize>().unwrap();
             total += n * len;
