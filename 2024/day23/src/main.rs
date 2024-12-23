@@ -1,4 +1,3 @@
-use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs;
 
@@ -6,36 +5,34 @@ fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
     let lines = input.lines().collect::<Vec<_>>();
 
-    let mut map: HashMap<&str, Vec<&str>> = HashMap::new();
+    let mut map: HashMap<&str, HashSet<&str>> = HashMap::new();
 
     for l in lines {
         let (a, b) = l.split_once("-").unwrap();
-        map.entry(a).or_default().push(b);
-        map.entry(b).or_default().push(a);
+        map.entry(a).or_default().insert(b);
+        map.entry(b).or_default().insert(a);
     }
 
-    let mut clusters: HashSet<Vec<&str>> = HashSet::new();
+    let mut clusters: Vec<Vec<&str>> = Vec::new();
     for &start in map.keys() {
         let mut queue = VecDeque::new();
         queue.push_back((start, vec![start]));
 
         while let Some((computer, seen)) = queue.pop_front() {
             for &n in &map[computer] {
-                if seen.contains(&n) {
+                if n < computer {
                     continue;
                 }
-                if !seen.iter().all(|&s| map[s].contains(&n)) {
+                let nn = &map[n];
+                if seen.iter().any(|&s| !nn.contains(&s)) {
                     continue;
                 }
 
                 let mut new_seen = seen.clone();
-                let i = new_seen.partition_point(|o| o.cmp(&n) == Ordering::Less);
-                new_seen.insert(i, n);
+                new_seen.push(n);
 
-                if !clusters.contains(&new_seen) {
-                    clusters.insert(new_seen.clone());
-                    queue.push_back((n, new_seen));
-                }
+                clusters.push(new_seen.clone());
+                queue.push_back((n, new_seen));
             }
         }
     }
