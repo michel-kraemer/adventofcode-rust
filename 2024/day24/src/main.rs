@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 
@@ -158,9 +158,60 @@ fn main() {
     println!("{}", total1);
 
     // part 2
-    let x = get_value(&wires, "x");
-    let y = get_value(&wires, "y");
+    // try to find broken nodes by checking common patterns (this is basically
+    // what I've done visually)
+    let mut edges: HashMap<&str, Vec<&str>> = HashMap::new();
+    for g in &gates {
+        edges.entry(g.a).or_default().push(g.out);
+        edges.entry(g.b).or_default().push(g.out);
+    }
 
+    let mut broken_nodes = HashSet::new();
+    for g in &gates {
+        // z nodes must be XOR (except for the last one, z45)
+        if g.out.starts_with("z") && g.out != "z45" && g.logic != Logic::Xor {
+            broken_nodes.insert(g.out);
+        }
+        // z nodes must not be inputs of other nodes
+        if g.a.starts_with("z") {
+            broken_nodes.insert(g.a);
+        }
+        if g.b.starts_with("z") {
+            broken_nodes.insert(g.b);
+        }
+
+        // inputs of XOR nodes (except for z nodes) must be x and y nodes
+        if g.logic == Logic::Xor
+            && !g.out.starts_with("z")
+            && !((g.a.starts_with("x") && g.b.starts_with("y"))
+                || (g.a.starts_with("y") && g.b.starts_with("x")))
+        {
+            broken_nodes.insert(g.out);
+        }
+
+        // XOR nodes (except z nodes) must always be input of exactly two
+        // other nodes
+        if g.logic == Logic::Xor && !g.out.starts_with("z") && edges[g.out].len() != 2 {
+            broken_nodes.insert(g.out);
+        }
+
+        // AND nodes must always be input of exactly one other node (except
+        // the very first one wired to x00 and y00)
+        if g.logic == Logic::And
+            && !g.out.starts_with("z")
+            && edges[g.out].len() != 1
+            && !((g.a == "x00" && g.b == "y00") || (g.a == "y00" && g.b == "x00"))
+        {
+            broken_nodes.insert(g.out);
+        }
+    }
+
+    // this should be the answer:
+    let mut broken_nodes = broken_nodes.into_iter().collect::<Vec<_>>();
+    broken_nodes.sort();
+    println!("{}", broken_nodes.join(","));
+
+    // hard-coded answer for my puzzle input
     let renames = HashMap::from([
         // 1
         ("kqh", "ddn"),
@@ -176,11 +227,13 @@ fn main() {
         ("wrc", "z34"),
     ]);
 
+    let x = get_value(&wires, "x");
+    let y = get_value(&wires, "y");
     let total2 = run(&wires, &gates, &renames);
     if total2 == x + y {
-        let mut broken_wires = renames.keys().copied().collect::<Vec<_>>();
-        broken_wires.sort();
-        println!("{}", broken_wires.join(","));
+        let mut broken_nodes2 = renames.keys().copied().collect::<Vec<_>>();
+        broken_nodes2.sort();
+        assert_eq!(broken_nodes, broken_nodes2);
     } else {
         panic!("Unsolvable");
     }
