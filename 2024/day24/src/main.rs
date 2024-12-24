@@ -93,29 +93,27 @@ fn run<'a>(
 
     let mut queue = VecDeque::from_iter(gates);
 
-    while !queue.is_empty() {
-        while let Some(g) = queue.pop_front() {
-            let out = renames.get(&g.out).unwrap_or(&g.out);
+    while let Some(g) = queue.pop_front() {
+        let out = renames.get(&g.out).unwrap_or(&g.out);
 
-            // get values of a and b or push them back into the queue if
-            // their values aren't available yet
-            let Some(&a) = wires.get(g.a) else {
-                queue.push_back(g);
-                continue;
-            };
-            let Some(&b) = wires.get(g.b) else {
-                queue.push_back(g);
-                continue;
-            };
+        // get values of a and b or push them back into the queue if
+        // their values aren't available yet
+        let Some(&a) = wires.get(g.a) else {
+            queue.push_back(g);
+            continue;
+        };
+        let Some(&b) = wires.get(g.b) else {
+            queue.push_back(g);
+            continue;
+        };
 
-            let v = match g.logic {
-                Logic::And => a && b,
-                Logic::Or => a || b,
-                Logic::Xor => a != b,
-            };
+        let v = match g.logic {
+            Logic::And => a && b,
+            Logic::Or => a || b,
+            Logic::Xor => a != b,
+        };
 
-            wires.insert(out, v);
-        }
+        wires.insert(out, v);
     }
 
     get_value(&wires, "z")
@@ -211,7 +209,7 @@ fn main() {
     broken_nodes.sort();
     println!("{}", broken_nodes.join(","));
 
-    // hard-coded answer for my puzzle input
+    // hard-coded answer for my puzzle input (just to check if the code above works)
     let renames = HashMap::from([
         // 1
         ("kqh", "ddn"),
@@ -233,7 +231,10 @@ fn main() {
     if total2 == x + y {
         let mut broken_nodes2 = renames.keys().copied().collect::<Vec<_>>();
         broken_nodes2.sort();
-        assert_eq!(broken_nodes, broken_nodes2);
+        assert_eq!(
+            broken_nodes, broken_nodes2,
+            "This check is just for my puzzle input"
+        );
     } else {
         panic!("Unsolvable");
     }
