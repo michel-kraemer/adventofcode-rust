@@ -48,16 +48,15 @@ fn get_value(wires: &HashMap<&str, bool>, prefix: &str) -> u64 {
 /// Convert dot file into svg:
 ///
 ///     dot -Tsvg graph.dot -o graph.svg
-#[allow(unused)]
-fn write_dot_file(gates: &[Gate<'_>]) {
-    let mut writer = BufWriter::new(File::create("graph.dot").unwrap());
+fn write_dot_file(gates: &[Gate<'_>], filename: &str, disconnect_carry_bits: bool) {
+    let mut writer = BufWriter::new(File::create(filename).unwrap());
 
     let logic_per_wire = gates
         .iter()
         .map(|g| (g.out, g.logic))
         .collect::<HashMap<_, _>>();
 
-    writer.write_all(b"digraph {{\n").unwrap();
+    writer.write_all(b"digraph {\n").unwrap();
 
     // write all nodes and colorize them according to their gate logic
     for lpw in &logic_per_wire {
@@ -67,21 +66,23 @@ fn write_dot_file(gates: &[Gate<'_>]) {
             Logic::Xor => "red",
         };
         writer
-            .write_all(format!("{} [style=filled,fillcolor={}];", lpw.0, color).as_bytes())
+            .write_all(format!("{} [style=filled,fillcolor={}];\n", lpw.0, color).as_bytes())
             .unwrap();
     }
 
     // write all edges
     for g in gates {
-        writer
-            .write_all(format!("{} -> {};", g.a, g.out).as_bytes())
-            .unwrap();
-        writer
-            .write_all(format!("{} -> {};", g.b, g.out).as_bytes())
-            .unwrap();
+        if !disconnect_carry_bits || g.logic != Logic::Or || g.out.starts_with("z") {
+            writer
+                .write_all(format!("{} -> {};\n", g.a, g.out).as_bytes())
+                .unwrap();
+            writer
+                .write_all(format!("{} -> {};\n", g.b, g.out).as_bytes())
+                .unwrap();
+        }
     }
 
-    writer.write_all(b"}}").unwrap();
+    writer.write_all(b"}").unwrap();
 }
 
 fn run<'a>(
@@ -238,4 +239,22 @@ fn main() {
     } else {
         panic!("Unsolvable");
     }
+
+    // visualize broken graph
+    write_dot_file(&gates, "graph_broken.dot", false);
+
+    // visualize broken graph and disconnect carry bits from their inputs (this
+    // is what I used for debugging during the contest)
+    write_dot_file(&gates, "graph_broken_disconnected.dot", true);
+
+    // visualize fixed graph
+    let fixed_gates = gates
+        .iter()
+        .map(|g| {
+            let out = renames.get(&g.out).unwrap_or(&g.out);
+            Gate { out, ..*g }
+        })
+        .collect::<Vec<_>>();
+    write_dot_file(&fixed_gates, "graph_fixed.dot", false);
+    write_dot_file(&fixed_gates, "graph_fixed_disconnected.dot", true);
 }
