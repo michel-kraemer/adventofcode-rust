@@ -6,7 +6,9 @@ use std::{
     ops::{Index, Range},
 };
 
-pub const DIRS: [(i64, i64); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
+// Right, Down, Left, Up
+pub const DIRS: [(i64, i64); 4] = [(1, 0), (0, 1), (-1, 0), (0, -1)];
+
 pub const CLOCKWISE: [(i64, i64); 8] = [
     (1, 0),
     (1, 1),
@@ -18,16 +20,26 @@ pub const CLOCKWISE: [(i64, i64); 8] = [
     (1, -1),
 ];
 
-pub trait ReadToGrid {
-    fn read_to_grid(&self) -> Grid<char>;
+pub fn read_to_grid(filename: &str) -> Result<Grid<char>, std::io::Error> {
+    Ok(fs::read_to_string(filename)?.to_grid())
 }
 
-pub fn read_to_grid(filename: &str) -> Result<Grid<char>, std::io::Error> {
-    let g = fs::read_to_string(filename)?
-        .lines()
-        .map(|l| l.chars().collect())
-        .collect();
-    Ok(Grid { grid: g })
+pub trait ToGrid {
+    fn to_grid(&self) -> Grid<char>;
+}
+
+impl ToGrid for &str {
+    fn to_grid(&self) -> Grid<char> {
+        Grid {
+            grid: self.lines().map(|l| l.chars().collect()).collect(),
+        }
+    }
+}
+
+impl ToGrid for String {
+    fn to_grid(&self) -> Grid<char> {
+        self.as_str().to_grid()
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -66,16 +78,6 @@ impl<T: Copy> Grid<T> {
         self.grid[y as usize][x as usize] = c;
     }
 
-    #[inline]
-    pub fn row_range(&self) -> Range<i64> {
-        0..self.height()
-    }
-
-    #[inline]
-    pub fn col_range(&self) -> Range<i64> {
-        0..self.width()
-    }
-
     pub fn iter(&self) -> GridIterator<T> {
         GridIterator {
             grid: self,
@@ -107,14 +109,6 @@ impl<'a, T: Copy> Iterator for GridIterator<'a, T> {
             self.y += 1;
         }
         Some(r)
-    }
-}
-
-impl<T: Copy> Index<(i64, i64)> for Grid<T> {
-    type Output = T;
-
-    fn index(&self, (x, y): (i64, i64)) -> &Self::Output {
-        &self.grid[y as usize][x as usize]
     }
 }
 
