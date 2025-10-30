@@ -78,7 +78,7 @@ impl<T: Copy> Grid<T> {
         self.grid[y as usize][x as usize] = c;
     }
 
-    pub fn iter(&self) -> GridIterator<T> {
+    pub fn iter(&'_ self) -> GridIterator<'_, T> {
         GridIterator {
             grid: self,
             x: 0,
