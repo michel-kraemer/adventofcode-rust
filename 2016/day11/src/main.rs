@@ -131,10 +131,10 @@ fn move_two_items(
 }
 
 fn main() {
-    for part1 in [true, false] {
-        let generator_regex = Regex::new(r"(\w+) generator").unwrap();
-        let microchip_regex = Regex::new(r"(\w+)-compatible microchip").unwrap();
+    let generator_regex = Regex::new(r"(\w+) generator").unwrap();
+    let microchip_regex = Regex::new(r"(\w+)-compatible microchip").unwrap();
 
+    for part1 in [true, false] {
         let input = fs::read_to_string("input.txt").expect("Could not read file");
 
         let mut categories: HashMap<&str, usize> = HashMap::new();

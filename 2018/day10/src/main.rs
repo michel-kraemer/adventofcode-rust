@@ -17,7 +17,7 @@ fn main() {
         .collect::<Vec<_>>();
 
     let mut seconds = 0;
-    let mut grid = vec![vec![' '; 0]; 0];
+    let mut grid = Vec::new();
     let mut min_area = i64::MAX;
     loop {
         let min_x = particles.iter().map(|p| p.0).min().unwrap();

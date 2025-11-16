@@ -8,13 +8,13 @@ fn check(cur: u64, numbers: &[u64], i: usize, part1: bool) -> bool {
     if !part1 && cur > numbers[i] {
         // get number of digits
         let mask = 10u64.pow(numbers[i].checked_ilog10().unwrap_or(0) + 1);
-        if (cur - numbers[i]) % mask == 0 && check(cur / mask, numbers, i - 1, part1) {
+        if (cur - numbers[i]).is_multiple_of(mask) && check(cur / mask, numbers, i - 1, part1) {
             // last n digits can be truncated
             return true;
         }
     }
 
-    if cur % numbers[i] == 0 && check(cur / numbers[i], numbers, i - 1, part1) {
+    if cur.is_multiple_of(numbers[i]) && check(cur / numbers[i], numbers, i - 1, part1) {
         // number is divisible
         return true;
     }

@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Turn {
     Left,
@@ -17,17 +19,17 @@ pub enum Instruction {
     Call(Func),
 }
 
-impl ToString for Instruction {
-    fn to_string(&self) -> String {
+impl Display for Instruction {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Instruction::Move(turn, n) => match turn {
-                Turn::Left => format!("L,{}", n),
-                Turn::Right => format!("R,{}", n),
+                Turn::Left => write!(f, "L,{}", n),
+                Turn::Right => write!(f, "R,{}", n),
             },
-            Instruction::Call(f) => match f {
-                Func::A => "A".to_string(),
-                Func::B => "B".to_string(),
-                Func::C => "C".to_string(),
+            Instruction::Call(fun) => match fun {
+                Func::A => write!(f, "A"),
+                Func::B => write!(f, "B"),
+                Func::C => write!(f, "C"),
             },
         }
     }

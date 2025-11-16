@@ -20,7 +20,7 @@ fn main() {
             .strip_suffix(':')
             .unwrap()
             .split(' ')
-            .last()
+            .next_back()
             .unwrap();
         for _ in 0..2 {
             let f = i
@@ -29,7 +29,7 @@ fn main() {
                 .strip_suffix(':')
                 .unwrap()
                 .split(' ')
-                .last()
+                .next_back()
                 .unwrap()
                 .parse::<usize>()
                 .unwrap();
@@ -39,7 +39,7 @@ fn main() {
                 .strip_suffix('.')
                 .unwrap()
                 .split(' ')
-                .last()
+                .next_back()
                 .unwrap()
                 .parse::<usize>()
                 .unwrap();
@@ -49,7 +49,7 @@ fn main() {
                 .strip_suffix('.')
                 .unwrap()
                 .split(' ')
-                .last()
+                .next_back()
                 .unwrap();
             let f_continue = i
                 .next()
@@ -57,7 +57,7 @@ fn main() {
                 .strip_suffix('.')
                 .unwrap()
                 .split(' ')
-                .last()
+                .next_back()
                 .unwrap();
             instructions.push((in_state, f, f_write, f_move, f_continue));
         }

@@ -17,12 +17,12 @@ fn main() {
             if i.starts_with("swap position") {
                 let mut params = i.split(' ');
                 let x = params.nth(2).unwrap().parse::<usize>().unwrap();
-                let y = params.last().unwrap().parse::<usize>().unwrap();
+                let y = params.next_back().unwrap().parse::<usize>().unwrap();
                 s.swap(x, y);
             } else if i.starts_with("swap letter") {
                 let mut params = i.split(' ');
                 let x = params.nth(2).unwrap().chars().next().unwrap();
-                let y = params.last().unwrap().chars().next().unwrap();
+                let y = params.next_back().unwrap().chars().next().unwrap();
                 s = s
                     .into_iter()
                     .map(|c| if c == x { '#' } else { c })
@@ -46,8 +46,8 @@ fn main() {
                     s.rotate_left(x);
                 }
             } else if i.starts_with("rotate based on position of letter") {
-                let params = i.split(' ');
-                let x = params.last().unwrap().chars().next().unwrap();
+                let mut params = i.split(' ');
+                let x = params.next_back().unwrap().chars().next().unwrap();
 
                 if part1 {
                     let idx = s.iter().position(|c| *c == x).unwrap();
@@ -70,7 +70,7 @@ fn main() {
             } else if i.starts_with("reverse positions") {
                 let mut params = i.split(' ');
                 let mut x = params.nth(2).unwrap().parse::<usize>().unwrap();
-                let mut y = params.last().unwrap().parse::<usize>().unwrap();
+                let mut y = params.next_back().unwrap().parse::<usize>().unwrap();
                 while x < y {
                     s.swap(x, y);
                     x += 1;
@@ -79,7 +79,7 @@ fn main() {
             } else if i.starts_with("move position") {
                 let mut params = i.split(' ');
                 let x = params.nth(2).unwrap().parse::<usize>().unwrap();
-                let y = params.last().unwrap().parse::<usize>().unwrap();
+                let y = params.next_back().unwrap().parse::<usize>().unwrap();
                 if part1 {
                     let c = s.remove(x);
                     s.insert(y, c);

@@ -87,18 +87,16 @@ pub fn compress(instructions: &[Instruction]) -> Option<Compressed> {
                     while max_len_c > 0 {
                         if let Some((instructions_c, c)) =
                             compress_pattern(&instructions_b, max_len_c, Func::C)
-                        {
-                            if instructions_c
+                            && instructions_c
                                 .iter()
                                 .all(|i| matches!(i, Instruction::Call(_)))
-                            {
-                                return Some(Compressed {
-                                    main: instructions_to_string(&instructions_c),
-                                    a,
-                                    b,
-                                    c,
-                                });
-                            }
+                        {
+                            return Some(Compressed {
+                                main: instructions_to_string(&instructions_c),
+                                a,
+                                b,
+                                c,
+                            });
                         }
                         max_len_c -= 1;
                     }

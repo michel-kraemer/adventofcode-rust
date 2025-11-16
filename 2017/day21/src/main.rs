@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fs};
 
-fn transpose(pattern: &Vec<Vec<char>>) -> Vec<Vec<char>> {
+fn transpose(pattern: &[Vec<char>]) -> Vec<Vec<char>> {
     let mut new_pattern = vec![vec![' '; pattern.len()]; pattern[0].len()];
     for (y, row) in pattern.iter().enumerate() {
         for (x, cell) in row.iter().enumerate() {
@@ -85,7 +85,7 @@ fn main() {
         ];
 
         for _ in 0..(if part1 { 5 } else { 18 }) {
-            let n = if grid.len() % 2 == 0 { 2 } else { 3 };
+            let n = if grid.len().is_multiple_of(2) { 2 } else { 3 };
 
             let mut ng = vec![vec!['.'; grid[0].len() / n * (n + 1)]; grid.len() / n * (n + 1)];
             for r in (0..grid.len()).step_by(n) {

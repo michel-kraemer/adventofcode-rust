@@ -43,7 +43,7 @@ fn main() {
             })
             .collect::<Vec<_>>();
 
-        let mut registers = vec![0i32; 26];
+        let mut registers = [0i32; 26];
 
         if part1 {
             registers[0] = 7;
@@ -65,11 +65,15 @@ fn main() {
                     }
                 }
                 Instruction::Inc => {
-                    let Param::Reg(r) = params[0] else { unreachable!() };
+                    let Param::Reg(r) = params[0] else {
+                        unreachable!()
+                    };
                     registers[r] += 1;
                 }
                 Instruction::Dec => {
-                    let Param::Reg(r) = params[0] else { unreachable!() };
+                    let Param::Reg(r) = params[0] else {
+                        unreachable!()
+                    };
                     registers[r] -= 1;
                 }
                 Instruction::Jnz => {
@@ -87,8 +91,12 @@ fn main() {
                             && instructions[pointer - 2].0 == Instruction::Inc
                             && instructions[pointer - 1].0 == Instruction::Dec
                         {
-                            let Param::Reg(r2) = instructions[pointer - 2].1[0] else { unreachable!() };
-                            let Param::Reg(r1) = instructions[pointer - 1].1[0] else { unreachable!() };
+                            let Param::Reg(r2) = instructions[pointer - 2].1[0] else {
+                                unreachable!()
+                            };
+                            let Param::Reg(r1) = instructions[pointer - 1].1[0] else {
+                                unreachable!()
+                            };
                             registers[r2] += v;
                             registers[r1] -= v;
                             pointer += 1;
@@ -97,8 +105,12 @@ fn main() {
                             && instructions[pointer - 2].0 == Instruction::Dec
                             && instructions[pointer - 1].0 == Instruction::Inc
                         {
-                            let Param::Reg(r2) = instructions[pointer - 2].1[0] else { unreachable!() };
-                            let Param::Reg(r1) = instructions[pointer - 1].1[0] else { unreachable!() };
+                            let Param::Reg(r2) = instructions[pointer - 2].1[0] else {
+                                unreachable!()
+                            };
+                            let Param::Reg(r1) = instructions[pointer - 1].1[0] else {
+                                unreachable!()
+                            };
                             registers[r2] -= v;
                             registers[r1] += v;
                             pointer += 1;

@@ -1,6 +1,6 @@
 use std::fs;
 
-fn is_valid(x: i32, y: i32, grid: &Vec<Vec<char>>, d: &(i32, i32)) -> bool {
+fn is_valid(x: i32, y: i32, grid: &[Vec<char>], d: &(i32, i32)) -> bool {
     if x < 0 || y < 0 || (x as usize) >= grid[0].len() || (y as usize) >= grid.len() {
         return false;
     }

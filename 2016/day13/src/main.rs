@@ -1,6 +1,6 @@
 use std::{
     cmp::Reverse,
-    collections::{hash_map::DefaultHasher, BinaryHeap, HashSet},
+    collections::{BinaryHeap, HashSet, hash_map::DefaultHasher},
     fs,
     hash::{Hash, Hasher},
 };
@@ -33,7 +33,7 @@ fn key(s: &State) -> u64 {
 
 fn is_space(x: i32, y: i32, num: i32) -> bool {
     let r = (x * x + 3 * x + 2 * x * y + y + y * y) + num;
-    r.count_ones() % 2 == 0
+    r.count_ones().is_multiple_of(2)
 }
 
 fn main() {

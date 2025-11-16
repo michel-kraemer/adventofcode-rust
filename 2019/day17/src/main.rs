@@ -203,7 +203,7 @@ fn main() {
 
     // part 1: count intersections in map
     let mut total_intersections = 0;
-    for ((x, y), _) in grid.iter().filter(|(_, &v)| v == b'#') {
+    for ((x, y), _) in grid.iter().filter(|&(_, &v)| v == b'#') {
         let mut c = 0;
         for d in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
             let nx = x + d.0;

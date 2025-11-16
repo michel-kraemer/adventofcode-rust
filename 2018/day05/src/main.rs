@@ -6,7 +6,7 @@ where
 {
     for b in polymer.iter().filter(f) {
         if !result.is_empty()
-            && (b.to_ascii_lowercase() == result.back().unwrap().to_ascii_lowercase())
+            && b.eq_ignore_ascii_case(result.back().unwrap())
             && (b.is_ascii_lowercase() != result.back().unwrap().is_ascii_lowercase())
         {
             result.pop_back();
@@ -33,9 +33,7 @@ fn main() {
     let mut min = usize::MAX;
     for u in b'a'..=b'z' {
         result.clear();
-        collapse(&polymer, &mut result, |c| {
-            c.to_ascii_lowercase() != u.to_ascii_lowercase()
-        });
+        collapse(&polymer, &mut result, |c| !c.eq_ignore_ascii_case(&u));
         min = min.min(result.len());
     }
     println!("{}", min);

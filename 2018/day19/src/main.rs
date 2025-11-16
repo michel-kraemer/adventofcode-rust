@@ -124,7 +124,7 @@ fn main() {
     // this is basically what the program does:
     // look for all factors of registers[4] and sum them up
     let sum = (1..=registers[4])
-        .filter(|i| registers[4] % i == 0)
+        .filter(|&i| registers[4].is_multiple_of(i))
         .sum::<usize>();
     println!("{}", sum);
 }
