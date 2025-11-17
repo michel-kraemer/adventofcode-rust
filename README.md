@@ -1,6 +1,10 @@
-# Advent of Code
+<div align="center">
+	<img width="100%" src="./.github/banner.png" alt="Advent of Code">
+	<br>
+  <br>
+</div>
 
-These are my solutions to the annual [Advent of Code](https://adventofcode.com)
+> These are my solutions to the annual [Advent of Code](https://adventofcode.com)
 challenge.
 
 ## Goals
