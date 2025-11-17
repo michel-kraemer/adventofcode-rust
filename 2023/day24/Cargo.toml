@@ -1,7 +1,4 @@
 [package]
 name = "day24"
 version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-z3 = { version = "0.12.1", features = ["static-link-z3"] }
+edition = "2024"
