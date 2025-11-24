@@ -20,6 +20,14 @@ pub const CLOCKWISE: [(i64, i64); 8] = [
     (1, -1),
 ];
 
+pub fn turn_left(dx: i64, dy: i64) -> (i64, i64) {
+    (dy, -dx)
+}
+
+pub fn turn_right(dx: i64, dy: i64) -> (i64, i64) {
+    (-dy, dx)
+}
+
 pub fn read_to_grid(filename: &str) -> Result<Grid<char>, std::io::Error> {
     Ok(fs::read_to_string(filename)?.to_grid())
 }
@@ -121,5 +129,34 @@ impl<T: Copy + Display> Display for Grid<T> {
             writeln!(f)?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::grid::*;
+
+    use super::DIRS;
+
+    #[test]
+    fn test_turn_left() {
+        for i in 0..4 {
+            let (dx, dy) = DIRS[i];
+            let (expected_dx, expected_dy) = DIRS[(i + 3) % 4];
+            let (ndx, ndy) = turn_left(dx, dy);
+            assert_eq!(expected_dx, ndx);
+            assert_eq!(expected_dy, ndy);
+        }
+    }
+
+    #[test]
+    fn test_turn_right() {
+        for i in 0..4 {
+            let (dx, dy) = DIRS[i];
+            let (expected_dx, expected_dy) = DIRS[(i + 1) % 4];
+            let (ndx, ndy) = turn_right(dx, dy);
+            assert_eq!(expected_dx, ndx);
+            assert_eq!(expected_dy, ndy);
+        }
     }
 }
