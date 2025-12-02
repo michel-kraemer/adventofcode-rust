@@ -1,39 +1,59 @@
-use std::fs;
+use std::{collections::HashSet, fs};
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
 
-    for part in [1, 2] {
-        let mut total = 0;
-        for range in input.trim().split(",") {
-            let (lo, hi) = range.split_once("-").unwrap();
-            let lo = lo.parse::<i64>().unwrap();
-            let hi = hi.parse::<i64>().unwrap();
-            for n in 10.max(lo)..=hi {
-                let s = n.to_string().bytes().collect::<Vec<_>>();
-                if part == 1 {
-                    if s.len().is_multiple_of(2) && s[..s.len() / 2] == s[s.len() / 2..] {
-                        total += n;
-                    }
-                } else {
-                    for chunklen in 1..=s.len() / 2 {
-                        let mut c = s.chunks(chunklen);
-                        let first = c.next().unwrap();
-                        let mut good = true;
-                        for next in c {
-                            if next != first {
-                                good = false;
-                                break;
-                            }
-                        }
-                        if good {
-                            total += n;
-                            break;
-                        }
-                    }
-                }
+    // parse ranges and find maximum length of numbers
+    let mut max_len = 0;
+    let mut ranges = Vec::new();
+    for range in input.trim().split(",") {
+        let (lo, hi) = range.split_once("-").unwrap();
+        max_len = max_len.max(lo.len());
+        max_len = max_len.max(hi.len());
+        let lo = lo.parse::<i64>().unwrap();
+        let hi = hi.parse::<i64>().unwrap();
+        ranges.push(lo..=hi);
+    }
+
+    // Generate all possible numbers with repeated sequences of digits. Keep
+    // track of those that only consist of two sequences (for part 1).
+    let mut all_part1 = HashSet::new();
+    let mut all = HashSet::new();
+    let mut mul: i64 = 10;
+    let mut ilen = 1;
+    let mut chunks = max_len;
+    for i in 1.. {
+        if i == mul {
+            mul *= 10;
+            ilen += 1;
+            chunks = max_len / ilen;
+            if chunks == 1 {
+                break;
             }
         }
-        println!("{total}");
+        let mut m = i;
+        for c in 0..chunks - 1 {
+            m *= mul;
+            m += i;
+            if c == 0 {
+                // number consists of only two sequences
+                all_part1.insert(m);
+            }
+            all.insert(m);
+        }
     }
+
+    // check which of the numbers in `all` lie in any of the ranges
+    let mut total1 = 0;
+    let mut total2 = 0;
+    for a in &all {
+        if ranges.iter().any(|range| range.contains(a)) {
+            if all_part1.contains(a) {
+                total1 += a;
+            }
+            total2 += a;
+        }
+    }
+    println!("{total1}");
+    println!("{total2}");
 }
