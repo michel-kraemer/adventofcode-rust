@@ -37,7 +37,10 @@ fn main() {
             mul *= 10;
         }
     }
-    all.sort(); // sort() is faster than sort_unstable() in this case
+
+    // sort() is faster than sort_unstable() in this case because the majority
+    // of the numbers are already sorted (see documentation of sort())
+    all.sort();
     all.dedup_by_key(|a| a.0);
 
     // check which of the numbers in `all` lie in any of the ranges
