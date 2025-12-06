@@ -1,4 +1,4 @@
-use std::{env, fs};
+use std::{collections::VecDeque, env, fs};
 
 use crate::screen::Screen;
 
@@ -15,9 +15,38 @@ pub const CLOCKWISE: [(i64, i64); 8] = [
     (1, -1),  // ↗︎
 ];
 
-fn main() {
-    let visualize = env::var("AOC_VISUALIZE").is_ok();
+trait StackOrQueue {
+    fn push(&mut self, xy: (usize, usize));
+    fn pop(&mut self) -> Option<(usize, usize)>;
+}
 
+#[derive(Default)]
+struct Stack(Vec<(usize, usize)>);
+
+#[derive(Default)]
+struct Queue(VecDeque<(usize, usize)>);
+
+impl StackOrQueue for Stack {
+    fn push(&mut self, xy: (usize, usize)) {
+        self.0.push(xy);
+    }
+
+    fn pop(&mut self) -> Option<(usize, usize)> {
+        self.0.pop()
+    }
+}
+
+impl StackOrQueue for Queue {
+    fn push(&mut self, xy: (usize, usize)) {
+        self.0.push_back(xy);
+    }
+
+    fn pop(&mut self) -> Option<(usize, usize)> {
+        self.0.pop_front()
+    }
+}
+
+fn run<T: StackOrQueue>(visualize: bool, mut queue: T) {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
     let lines = input.lines().collect::<Vec<_>>();
     let width = lines[0].len();
@@ -30,7 +59,6 @@ fn main() {
 
     // Part 1: Look for rolls of paper we can access. Put them into a queue for
     // part 2.
-    let mut queue = Vec::new();
     let mut counts = vec![0u8; grid.len()];
     let mut total1 = 0;
     for y in 0..height {
@@ -102,4 +130,14 @@ fn main() {
     }
 
     println!("{total2}");
+}
+
+fn main() {
+    let visualize = env::var("AOC_VISUALIZE").is_ok();
+    if visualize {
+        run(true, Stack::default());
+        run(true, Queue::default());
+    } else {
+        run(false, Queue::default());
+    }
 }
