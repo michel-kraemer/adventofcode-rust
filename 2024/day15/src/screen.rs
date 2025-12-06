@@ -1,10 +1,10 @@
 use core::time;
 use std::{
-    io::{stdout, Stdout},
+    io::{stdout, Stdout, Write},
     thread,
 };
 
-use crossterm::{cursor, style, ExecutableCommand};
+use crossterm::{cursor, style, terminal, ExecutableCommand};
 
 pub struct Screen {
     width: usize,
@@ -16,21 +16,35 @@ pub struct Screen {
 
 impl Screen {
     pub fn new(width: usize, height: usize) -> Self {
-        let mut stdout = stdout();
+        let (terminal_cols, terminal_rows) = terminal::size().unwrap();
+        if (terminal_rows as usize) < height {
+            panic!(
+                "Terminal window is not high enough. Resize your terminal \
+                window, so at least {height} rows can be displayed at once."
+            );
+        }
+        if (terminal_cols as usize) < height {
+            panic!(
+                "Terminal window is not wide enough. Resize your terminal \
+                window, so at least {width} columns can be displayed at once."
+            );
+        }
+
+        let stdout = stdout();
+        let mut lock = stdout.lock();
 
         // make space on screen and reset cursor
         for _ in 0..height {
-            println!();
+            lock.write_all(b"\n").unwrap();
         }
-        stdout
-            .execute(cursor::MoveTo(
-                0,
-                cursor::position().unwrap().1 - height as u16,
-            ))
-            .unwrap();
+        lock.execute(cursor::MoveTo(
+            0,
+            cursor::position().unwrap().1 - height as u16,
+        ))
+        .unwrap();
 
         // hide cursor
-        stdout.execute(cursor::Hide).unwrap();
+        lock.execute(cursor::Hide).unwrap();
 
         let last_grid = vec![' '; width * height];
 
@@ -44,6 +58,7 @@ impl Screen {
     }
 
     pub fn update(&mut self, grid: &[u8]) {
+        let mut stdout = self.stdout.lock();
         for y in 0..self.height {
             for x in 0..self.width {
                 let mut c = grid[y * self.width + x] as char;
@@ -54,10 +69,10 @@ impl Screen {
                 }
                 if c != self.last_grid[y * self.width + x] {
                     self.last_grid[y * self.width + x] = c;
-                    self.stdout
+                    stdout
                         .execute(cursor::MoveTo(self.pos.0 + x as u16, self.pos.1 + y as u16))
                         .unwrap();
-                    self.stdout.execute(style::Print(c)).unwrap();
+                    stdout.execute(style::Print(c)).unwrap();
                 }
             }
         }
@@ -65,9 +80,10 @@ impl Screen {
     }
 
     pub fn finish(&mut self) {
-        self.stdout
+        let mut stdout = self.stdout.lock();
+        stdout
             .execute(cursor::MoveTo(0, self.pos.1 + self.height as u16 + 1))
             .unwrap();
-        self.stdout.execute(cursor::Show).unwrap();
+        stdout.execute(cursor::Show).unwrap();
     }
 }
