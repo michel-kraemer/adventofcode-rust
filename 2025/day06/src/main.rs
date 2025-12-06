@@ -1,18 +1,5 @@
 use std::fs;
 
-/// Transpose the given list of lines so that columns become rows
-fn transpose(lines: Vec<&str>) -> Vec<String> {
-    let mut result = Vec::new();
-    for x in 0..lines[0].len() {
-        let mut col = String::new();
-        for l in &lines {
-            col.push(l.as_bytes()[x] as char);
-        }
-        result.push(col);
-    }
-    result
-}
-
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
     let lines = input.lines().collect::<Vec<_>>();
@@ -41,41 +28,43 @@ fn main() {
     println!("{total1}");
 
     // part 2
-    let lines = transpose(lines);
-    let mut total2 = 0;
-    let mut current = 0;
-    let mut current_op = "";
-    for l in &lines {
-        // whenever we find an empty line, update `total2` and reset `current`
-        // and `current_op`
-        if l.trim_ascii().is_empty() {
-            total2 += current;
-            current = 0;
-            current_op = "";
-            continue;
-        }
+    let width = lines[0].len();
+    let height = lines.len();
+    let grid = lines
+        .iter()
+        .flat_map(|l| l.as_bytes())
+        .copied()
+        .collect::<Vec<_>>();
 
-        // At the beginning and after an empty line, `current_op` is empty. The
-        // current line should contain a new operator.
-        let (n, op) = l.split_at(l.len() - 1);
-        if current_op.is_empty() {
-            current_op = op;
-            if op == "+" {
-                current = 0;
-            } else {
-                current = 1;
+    let mut total2 = 0;
+    let mut current_val = 0;
+    let mut current_op = 0;
+    for x in 0..width {
+        let mut n = 0;
+        for y in 0..height {
+            let c = grid[y * width + x];
+            if c.is_ascii_digit() {
+                n *= 10;
+                n += (c - b'0') as i64;
+            } else if c != b' ' {
+                current_op = c;
+                if current_op == b'+' {
+                    current_val = 0;
+                } else {
+                    current_val = 1;
+                }
             }
         }
 
-        // update current value
-        let n = n.trim_ascii().parse::<i64>().unwrap();
-        if current_op == "+" {
-            current += n;
+        if n == 0 {
+            total2 += current_val;
+        } else if current_op == b'+' {
+            current_val += n;
         } else {
-            current *= n;
+            current_val *= n;
         }
     }
-    total2 += current; // add the final value
+    total2 += current_val;
 
     println!("{total2}");
 }
