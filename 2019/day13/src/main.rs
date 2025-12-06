@@ -157,7 +157,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     memory[0] = 2;
 
     // should the game be visualized on the terminal?
-    let visualize = env::var("AOC_DAY13_VISUALIZE").is_ok();
+    let visualize = env::var("AOC_VISUALIZE").is_ok();
 
     let mut stdout = stdout();
     let pos = if visualize {

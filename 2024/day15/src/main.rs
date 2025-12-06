@@ -161,7 +161,7 @@ fn run_instructions(
 
 fn main() {
     // should the grid be visualized on the terminal?
-    let visualize = env::var("AOC_DAY15_VISUALIZE").is_ok();
+    let visualize = env::var("AOC_VISUALIZE").is_ok();
 
     for part1 in [true, false] {
         let input = fs::read_to_string("input.txt").expect("Could not read file");
