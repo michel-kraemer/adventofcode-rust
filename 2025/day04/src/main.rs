@@ -1,4 +1,8 @@
-use std::fs;
+use std::{env, fs};
+
+use crate::screen::Screen;
+
+mod screen;
 
 pub const CLOCKWISE: [(i64, i64); 8] = [
     (1, 0),   // →
@@ -12,6 +16,8 @@ pub const CLOCKWISE: [(i64, i64); 8] = [
 ];
 
 fn main() {
+    let visualize = env::var("AOC_VISUALIZE").is_ok();
+
     let input = fs::read_to_string("input.txt").expect("Could not read file");
     let lines = input.lines().collect::<Vec<_>>();
     let width = lines[0].len();
@@ -54,11 +60,22 @@ fn main() {
     }
     println!("{total1}");
 
+    let mut screen = if visualize {
+        Some(Screen::new(width, height))
+    } else {
+        None
+    };
+
     // Part 2: For each of the rolls in the queue, remove them and decrease the
     // count of all their neighbors. If the count of a neighbor falls below the
     // limit, add it to the queue too.
     let mut total2 = 0;
     while let Some((x, y)) = queue.pop() {
+        if let Some(screen) = &mut screen {
+            counts[y * width + x] = 0;
+            screen.update(&counts);
+        }
+
         total2 += 1;
         for (dx, dy) in CLOCKWISE {
             let nx = x as i64 + dx;
@@ -79,5 +96,10 @@ fn main() {
             }
         }
     }
+
+    if let Some(mut screen) = screen {
+        screen.finish();
+    }
+
     println!("{total2}");
 }
