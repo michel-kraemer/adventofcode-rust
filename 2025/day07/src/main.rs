@@ -11,23 +11,23 @@ fn dfs(
     if y == height {
         return 1;
     }
-    let mut result = cache[y * width + x];
+    let mut result = cache[(y / 2) * width + x];
     if result > 0 {
         return result;
     }
     if grid[y * width + x] == b'^' {
         // go left and right
-        result += dfs(x - 1, y, grid, width, height, cache);
-        result += dfs(x + 1, y, grid, width, height, cache);
+        result += dfs(x - 1, y + 2, grid, width, height, cache);
+        result += dfs(x + 1, y + 2, grid, width, height, cache);
 
         // Only save entries in the cache if we've hit a splitter. This way,
         // we can later calculate how many splitters are reachable (part 1).
         // As a side effect, we need to access the array less often, which
         // saves a bit of time.
-        cache[y * width + x] = result;
+        cache[(y / 2) * width + x] = result;
     } else {
         // go downwards
-        result += dfs(x, y + 1, grid, width, height, cache);
+        result += dfs(x, y + 2, grid, width, height, cache);
     }
     result
 }
@@ -47,7 +47,7 @@ fn main() {
 
     // perform DFS to calculate the number of possible ways (i.e. timelines)
     // a single particle can take
-    let mut cache = vec![0; grid.len()];
+    let mut cache = vec![0; grid.len() / 2];
     let total2 = dfs(start.0, start.1, &grid, width, height, &mut cache);
 
     // part 1 - the number of cache entries is the total number of reachable
