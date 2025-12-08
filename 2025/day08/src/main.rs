@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::fs;
 
 struct Node {
@@ -14,12 +13,12 @@ fn find(x: usize, nodes: &mut [Node]) -> usize {
     x
 }
 
-fn union(x: usize, y: usize, nodes: &mut [Node]) {
+fn union(x: usize, y: usize, nodes: &mut [Node]) -> usize {
     let mut x = find(x, nodes);
     let mut y = find(y, nodes);
 
     if x == y {
-        return;
+        return x;
     }
 
     if nodes[x].size < nodes[y].size {
@@ -28,6 +27,8 @@ fn union(x: usize, y: usize, nodes: &mut [Node]) {
 
     nodes[y].parent = x;
     nodes[x].size += nodes[y].size;
+
+    x
 }
 
 fn main() {
@@ -52,36 +53,30 @@ fn main() {
             distances.push((d, a, b));
         }
     }
-    distances.sort();
+    distances.sort_unstable_by_key(|d| d.0);
 
     // create union-find data structure
     let mut nodes = (0..boxes.len())
         .map(|i| Node { parent: i, size: 1 })
         .collect::<Vec<_>>();
 
-    // make the first 1000 connections
+    // make the first 1000 connections and keep track of the cluster sizes
+    let mut sizes = vec![1; nodes.len()];
     let mut n_clusters = nodes.len();
     for &d in distances.iter().take(1000) {
         let a = find(d.1, &mut nodes);
         let b = find(d.2, &mut nodes);
         if a != b {
             n_clusters -= 1;
-            union(a, b, &mut nodes);
+            let parent = union(a, b, &mut nodes);
+            sizes[a] = 0;
+            sizes[b] = 0;
+            sizes[parent] = nodes[parent].size;
         }
     }
-
-    // get the sizes of all unique clusters
-    let mut sizes = Vec::new();
-    let mut seen = HashSet::new();
-    for i in 0..nodes.len() {
-        let parent = find(i, &mut nodes);
-        if seen.insert(parent) {
-            sizes.push(nodes[parent].size);
-        }
-    }
-    sizes.sort_by(|a, b| b.cmp(a));
 
     // take the product of the top 3 sizes
+    sizes.sort_unstable_by(|a, b| b.cmp(a));
     println!("{}", sizes[0..3].iter().product::<usize>());
 
     // make the remaining connections
