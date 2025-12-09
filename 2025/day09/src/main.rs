@@ -1,4 +1,7 @@
-use std::fs;
+use std::{
+    fs,
+    ops::{Add, Sub},
+};
 
 /// A 2D point
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -10,6 +13,28 @@ struct Point {
 impl Point {
     fn new(x: u64, y: u64) -> Self {
         Self { x, y }
+    }
+}
+
+impl Add<(u64, u64)> for Point {
+    type Output = Self;
+
+    fn add(self, rhs: (u64, u64)) -> Self::Output {
+        Self {
+            x: self.x + rhs.0,
+            y: self.y + rhs.1,
+        }
+    }
+}
+
+impl Sub<(u64, u64)> for Point {
+    type Output = Self;
+
+    fn sub(self, rhs: (u64, u64)) -> Self::Output {
+        Self {
+            x: self.x - rhs.0,
+            y: self.y - rhs.1,
+        }
     }
 }
 
@@ -175,6 +200,21 @@ fn main() {
                 || !is_inside(bottom_left, &hedges, &vedges)
                 || !is_inside(top_right, &hedges, &vedges)
                 || !is_inside(bottom_right, &hedges, &vedges)
+            {
+                continue;
+            }
+
+            // BUGFIX: Check the neighbors of the corners too, to make sure we
+            // don't just touch the polygon. This is not necessary for the
+            // puzzle input but makes the solution more generic.
+            if !is_inside(top_left + (1, 0), &hedges, &vedges)
+                || !is_inside(top_left + (0, 1), &hedges, &vedges)
+                || !is_inside(top_right - (1, 0), &hedges, &vedges)
+                || !is_inside(top_right + (0, 1), &hedges, &vedges)
+                || !is_inside(bottom_left + (1, 0), &hedges, &vedges)
+                || !is_inside(bottom_left - (0, 1), &hedges, &vedges)
+                || !is_inside(bottom_right - (1, 0), &hedges, &vedges)
+                || !is_inside(bottom_right - (0, 1), &hedges, &vedges)
             {
                 continue;
             }
