@@ -124,16 +124,6 @@ fn main() {
         coords.push(Point::new(x, y));
     }
 
-    // part 1: calculate maximum area
-    let mut max = 0;
-    for a in 0..coords.len() {
-        for b in a + 1..coords.len() {
-            max = max.max(area(coords[a], coords[b]));
-        }
-    }
-    println!("{max}");
-
-    // part 2 ...
     // get a list of all horizontal and vertical edges
     let mut hedges = Vec::new();
     let mut vedges = Vec::new();
@@ -149,20 +139,23 @@ fn main() {
     hedges.sort_unstable_by_key(|e| e.min.y);
     vedges.sort_unstable_by_key(|e| e.min.x);
 
-    let mut max = 0;
-    for a in 0..coords.len() {
-        for b in a + 1..coords.len() {
-            let ar = area(coords[a], coords[b]);
-            if ar < max {
-                // no improvement possible
+    let mut max1 = 0;
+    let mut max2 = 0;
+    for (a, ca) in coords.iter().enumerate() {
+        for cb in coords.iter().skip(a + 1) {
+            let ar = area(*ca, *cb);
+            max1 = max1.max(area(*ca, *cb));
+
+            if ar < max2 {
+                // part 2: no improvement possible
                 continue;
             }
 
             // construct rectangle
-            let left = coords[a].x.min(coords[b].x);
-            let right = coords[a].x.max(coords[b].x);
-            let top = coords[a].y.min(coords[b].y);
-            let bottom = coords[a].y.max(coords[b].y);
+            let left = ca.x.min(cb.x);
+            let right = ca.x.max(cb.x);
+            let top = ca.y.min(cb.y);
+            let bottom = ca.y.max(cb.y);
 
             let top_left = Point::new(left, top);
             let bottom_left = Point::new(left, bottom);
@@ -187,21 +180,27 @@ fn main() {
             }
 
             // check if any of the rectangle edges crosses any of the polygon edges
-            if vedges.iter().any(|&v| {
-                cross_edges(v, Edge::new(top_left, top_right))
-                    || cross_edges(v, Edge::new(bottom_left, bottom_right))
-            }) {
-                continue;
-            }
-            if hedges.iter().any(|&h| {
-                cross_edges(Edge::new(top_left, bottom_left), h)
-                    || cross_edges(Edge::new(top_right, bottom_right), h)
-            }) {
+            if left < right
+                && vedges.iter().take_while(|e| e.min.x < right).any(|&v| {
+                    cross_edges(v, Edge::new(top_left, top_right))
+                        || cross_edges(v, Edge::new(bottom_left, bottom_right))
+                })
+            {
                 continue;
             }
 
-            max = max.max(ar);
+            if top < bottom
+                && hedges.iter().take_while(|e| e.min.y < bottom).any(|&h| {
+                    cross_edges(Edge::new(top_left, bottom_left), h)
+                        || cross_edges(Edge::new(top_right, bottom_right), h)
+                })
+            {
+                continue;
+            }
+
+            max2 = max2.max(ar);
         }
     }
-    println!("{max}");
+    println!("{max1}");
+    println!("{max2}");
 }
