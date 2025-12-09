@@ -7,6 +7,12 @@ struct Point {
     y: u64,
 }
 
+impl Point {
+    fn new(x: u64, y: u64) -> Self {
+        Self { x, y }
+    }
+}
+
 /// An horizontal or vertical edge consisting of 2 points, sorted by x or y
 #[derive(Clone, Copy)]
 struct Edge {
@@ -115,7 +121,7 @@ fn main() {
         let (x, y) = l.split_once(',').unwrap();
         let x = x.parse::<u64>().unwrap();
         let y = y.parse::<u64>().unwrap();
-        coords.push(Point { x, y });
+        coords.push(Point::new(x, y));
     }
 
     // part 1: calculate maximum area
@@ -140,25 +146,28 @@ fn main() {
             vedges.push(Edge::new(p1, p2));
         }
     }
-    hedges.sort_by_key(|e| e.min.y);
-    vedges.sort_by_key(|e| e.min.x);
+    hedges.sort_unstable_by_key(|e| e.min.y);
+    vedges.sort_unstable_by_key(|e| e.min.x);
 
     let mut max = 0;
     for a in 0..coords.len() {
         for b in a + 1..coords.len() {
+            let ar = area(coords[a], coords[b]);
+            if ar < max {
+                // no improvement possible
+                continue;
+            }
+
             // construct rectangle
             let left = coords[a].x.min(coords[b].x);
             let right = coords[a].x.max(coords[b].x);
             let top = coords[a].y.min(coords[b].y);
             let bottom = coords[a].y.max(coords[b].y);
 
-            let top_left = Point { x: left, y: top };
-            let bottom_left = Point { x: left, y: bottom };
-            let top_right = Point { x: right, y: top };
-            let bottom_right = Point {
-                x: right,
-                y: bottom,
-            };
+            let top_left = Point::new(left, top);
+            let bottom_left = Point::new(left, bottom);
+            let top_right = Point::new(right, top);
+            let bottom_right = Point::new(right, bottom);
 
             // check if any of the polygon points lies inside the rectangle
             if coords
@@ -191,7 +200,7 @@ fn main() {
                 continue;
             }
 
-            max = max.max(area(coords[a], coords[b]));
+            max = max.max(ar);
         }
     }
     println!("{max}");
