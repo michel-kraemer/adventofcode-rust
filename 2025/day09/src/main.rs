@@ -161,14 +161,10 @@ fn main() {
             };
 
             // check if any of the polygon points lies inside the rectangle
-            let mut good = true;
-            for c in &coords {
-                if c.x > left && c.x < right && c.y > top && c.y < bottom {
-                    good = false;
-                    break;
-                }
-            }
-            if !good {
+            if coords
+                .iter()
+                .any(|c| c.x > left && c.x < right && c.y > top && c.y < bottom)
+            {
                 continue;
             }
 
@@ -182,41 +178,16 @@ fn main() {
             }
 
             // check if any of the rectangle edges crosses any of the polygon edges
-            for &v in &vedges {
-                if cross_edges(v, Edge::new(top_left, top_right)) {
-                    good = false;
-                    break;
-                }
-            }
-            if !good {
+            if vedges.iter().any(|&v| {
+                cross_edges(v, Edge::new(top_left, top_right))
+                    || cross_edges(v, Edge::new(bottom_left, bottom_right))
+            }) {
                 continue;
             }
-            for &v in &vedges {
-                if cross_edges(v, Edge::new(bottom_left, bottom_right)) {
-                    good = false;
-                    break;
-                }
-            }
-            if !good {
-                continue;
-            }
-
-            for &v in &hedges {
-                if cross_edges(Edge::new(top_left, bottom_left), v) {
-                    good = false;
-                    break;
-                }
-            }
-            if !good {
-                continue;
-            }
-            for &v in &hedges {
-                if cross_edges(Edge::new(top_right, bottom_right), v) {
-                    good = false;
-                    break;
-                }
-            }
-            if !good {
+            if hedges.iter().any(|&h| {
+                cross_edges(Edge::new(top_left, bottom_left), h)
+                    || cross_edges(Edge::new(top_right, bottom_right), h)
+            }) {
                 continue;
             }
 
