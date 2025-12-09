@@ -100,10 +100,10 @@ fn is_inside(p: Point, hedges: &[Edge], vedges: &[Edge]) -> bool {
 /// Check if two edges cross each other, i.e. there is an intersection point but
 /// this point is not a start or end point of one of the edges
 fn cross_edges(vert: Edge, horiz: Edge) -> bool {
-    if vert.min.x <= horiz.min.x || vert.min.x >= horiz.max.x {
-        return false;
-    }
-    vert.min.y < horiz.min.y && vert.max.y > horiz.min.y
+    vert.min.x > horiz.min.x
+        && vert.min.x < horiz.max.x
+        && vert.min.y < horiz.min.y
+        && vert.max.y > horiz.min.y
 }
 
 fn main() {
