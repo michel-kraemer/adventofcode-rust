@@ -81,8 +81,12 @@ fn next_combination(combinations: &mut [usize]) -> bool {
     true
 }
 
+fn is_button_available(i: usize, mask: u32) -> bool {
+    mask & (1 << i) > 0
+}
+
 /// Part 2: Optimized DFS that tries to prune as many branches as possible
-fn dfs_part2(joltage: &[usize], buttons: &[Vec<usize>]) -> usize {
+fn dfs_part2(joltage: &[usize], available_buttons_mask: u32, buttons: &[Vec<usize>]) -> usize {
     if joltage.iter().all(|j| *j == 0) {
         return 0;
     }
@@ -90,35 +94,35 @@ fn dfs_part2(joltage: &[usize], buttons: &[Vec<usize>]) -> usize {
     // Important optimization: Find the joltage value with the lowest number of
     // combinations of buttons to try. This allows us to prune branches as early
     // as possible.
-    let mut min = usize::MAX;
-    let mut mini = 0;
-    for (i, &jolt) in joltage.iter().enumerate() {
-        if jolt > 0 {
-            let n_matching_buttons = buttons.iter().filter(|b| b.contains(&i)).count();
-            if n_matching_buttons < min {
-                min = n_matching_buttons;
-                mini = i;
-            }
-        }
-    }
-    let min = joltage[mini];
+    let (mini, &min) = joltage
+        .iter()
+        .enumerate()
+        .filter(|&(_, &v)| v > 0)
+        .min_by_key(|(i, _)| {
+            buttons
+                .iter()
+                .enumerate()
+                .filter(|&(j, b)| is_button_available(j, available_buttons_mask) && b.contains(i))
+                .count()
+        })
+        .unwrap();
 
     // get the buttons that affect the joltage value at position `mini`
     let matching_buttons = buttons
         .iter()
-        .filter(|b| b.contains(&mini))
+        .enumerate()
+        .filter(|&(i, b)| is_button_available(i, available_buttons_mask) && b.contains(&mini))
         .collect::<Vec<_>>();
 
     let mut result = usize::MAX;
 
     if !matching_buttons.is_empty() {
-        // get all other buttons that do not affect the joltage value at
-        // position `mini`
-        let remaining_buttons = buttons
-            .iter()
-            .filter(|b| !b.contains(&mini))
-            .cloned()
-            .collect::<Vec<_>>();
+        // create new mask so only those buttons remain that do not affect the
+        // joltage value at position `mini`
+        let mut new_mask = available_buttons_mask;
+        for (i, _) in &matching_buttons {
+            new_mask &= !(1 << i);
+        }
 
         // try all combinations of matching buttons
         let mut new_joltage = joltage.to_vec();
@@ -134,9 +138,9 @@ fn dfs_part2(joltage: &[usize], buttons: &[Vec<usize>]) -> usize {
                 if cnt == 0 {
                     continue;
                 }
-                for &b in matching_buttons[bi] {
-                    if new_joltage[b] >= cnt {
-                        new_joltage[b] -= cnt;
+                for &j in matching_buttons[bi].1 {
+                    if new_joltage[j] >= cnt {
+                        new_joltage[j] -= cnt;
                     } else {
                         good = false;
                         break 'buttons;
@@ -146,7 +150,7 @@ fn dfs_part2(joltage: &[usize], buttons: &[Vec<usize>]) -> usize {
 
             if good {
                 // recurse with decreased joltage values and with remaining buttons
-                let r = dfs_part2(&new_joltage, &remaining_buttons);
+                let r = dfs_part2(&new_joltage, new_mask, buttons);
                 if r != usize::MAX {
                     result = result.min(min + r);
                 }
@@ -213,7 +217,7 @@ fn main() {
     // part 2 - optimized DFS that tries to prune as many branches as possible
     let mut total2 = 0;
     for m in &machines {
-        total2 += dfs_part2(&m.target_joltage, &m.buttons);
+        total2 += dfs_part2(&m.target_joltage, (1 << m.buttons.len()) - 1, &m.buttons);
     }
     println!("{total2}");
 }
