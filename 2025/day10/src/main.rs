@@ -1,4 +1,3 @@
-use rayon::iter::{ParallelBridge, ParallelIterator};
 use std::collections::HashMap;
 use std::fs;
 
@@ -194,7 +193,7 @@ fn main() {
     let lines = input.lines().collect::<Vec<_>>();
 
     // part 1
-    let mut total = 0;
+    let mut total1 = 0;
     for l in &lines {
         let parts = l.split(" ").collect::<Vec<_>>();
         let target_machine = parts[0];
@@ -214,7 +213,7 @@ fn main() {
             .collect::<Vec<_>>();
 
         let mut machine = vec![false; target_machine.len()];
-        total += dfs_part1(
+        total1 += dfs_part1(
             &mut machine,
             &target_machine,
             0,
@@ -222,34 +221,30 @@ fn main() {
             &mut HashMap::new(),
         );
     }
-    println!("{total}");
+    println!("{total1}");
 
     // part 2
-    let total = lines
-        .iter()
-        .par_bridge()
-        .map(|l| {
-            let parts = l.split(" ").collect::<Vec<_>>();
-            let buttons = &parts[1..parts.len() - 1];
-            let buttons = buttons
-                .iter()
-                .map(|b| {
-                    b[1..b.len() - 1]
-                        .split(',')
-                        .map(|v| v.parse::<u64>().unwrap())
-                        .collect::<Vec<_>>()
-                })
-                .collect::<Vec<_>>();
+    let mut total2 = 0;
+    for l in lines {
+        let parts = l.split(" ").collect::<Vec<_>>();
+        let buttons = &parts[1..parts.len() - 1];
+        let buttons = buttons
+            .iter()
+            .map(|b| {
+                b[1..b.len() - 1]
+                    .split(',')
+                    .map(|v| v.parse::<u64>().unwrap())
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
 
-            let target_joltage = parts[parts.len() - 1];
-            let target_joltage = target_joltage[1..target_joltage.len() - 1]
-                .split(',')
-                .map(|v| v.parse::<u64>().unwrap())
-                .collect::<Vec<_>>();
+        let target_joltage = parts[parts.len() - 1];
+        let target_joltage = target_joltage[1..target_joltage.len() - 1]
+            .split(',')
+            .map(|v| v.parse::<u64>().unwrap())
+            .collect::<Vec<_>>();
 
-            dfs_part2(&target_joltage, &buttons)
-        })
-        .sum::<u64>();
-
-    println!("{total}");
+        total2 += dfs_part2(&target_joltage, &buttons);
+    }
+    println!("{total2}");
 }
