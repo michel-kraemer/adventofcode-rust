@@ -94,16 +94,26 @@ fn dfs_part2(joltage: &[usize], available_buttons_mask: u32, buttons: &[Vec<usiz
     // Important optimization: Find the joltage value with the lowest number of
     // combinations of buttons to try. This allows us to prune branches as early
     // as possible.
+    // Second optimization (not so important, but still quite good): If multiple
+    // joltage values are affected by the same number of buttons, select the
+    // highest value
     let (mini, &min) = joltage
         .iter()
         .enumerate()
         .filter(|&(_, &v)| v > 0)
-        .min_by_key(|(i, _)| {
-            buttons
-                .iter()
-                .enumerate()
-                .filter(|&(j, b)| is_button_available(j, available_buttons_mask) && b.contains(i))
-                .count()
+        .min_by_key(|&(i, &v)| {
+            (
+                // lowest number of buttons
+                buttons
+                    .iter()
+                    .enumerate()
+                    .filter(|&(j, b)| {
+                        is_button_available(j, available_buttons_mask) && b.contains(&i)
+                    })
+                    .count(),
+                // highest joltage value (negative because we're using `min_by_key`)
+                -(v as isize),
+            )
         })
         .unwrap();
 
