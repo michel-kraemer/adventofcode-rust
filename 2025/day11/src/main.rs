@@ -1,51 +1,68 @@
-use std::collections::HashMap;
 use std::fs;
 
-fn count<'a>(
-    pos: &'a str,
-    end: &'a str,
-    edges: &HashMap<&'a str, Vec<&'a str>>,
-    cache: &mut HashMap<&'a str, u64>,
-) -> u64 {
+/// Nodes always have three characters and all of them are lowercase letters
+/// between 'a' and 'z', so we can compute a perfect hash
+fn index(node: &str) -> usize {
+    let bytes = node.as_bytes();
+    (bytes[0] - b'a') as usize * 26 * 26
+        + (bytes[1] - b'a') as usize * 26
+        + (bytes[2] - b'a') as usize
+}
+
+/// Count the number of paths from the node `pos` to `end`
+fn count(pos: usize, end: usize, edges: &Vec<Vec<usize>>, cache: &mut Vec<u64>) -> u64 {
     if pos == end {
         return 1;
     }
-    if let Some(c) = cache.get(&pos) {
-        return *c;
+    let c = cache[pos];
+    if c != u64::MAX {
+        return c;
     }
 
     let mut result = 0;
-    if let Some(neighbors) = edges.get(pos) {
-        for n in neighbors {
-            result += count(n, end, edges, cache);
-        }
+    for n in &edges[pos] {
+        result += count(*n, end, edges, cache);
     }
-    cache.insert(pos, result);
+
+    cache[pos] = result;
+
     result
 }
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
 
-    let mut edges: HashMap<&str, Vec<&str>> = HashMap::new();
+    let you = index("you");
+    let out = index("out");
+    let svr = index("svr");
+    let fft = index("fft");
+    let dac = index("dac");
+
+    let max_len = 26 * 26 * 26;
+
+    let mut edges = vec![Vec::new(); max_len];
     for l in input.lines() {
         let (from, to) = l.split_once(": ").unwrap();
         for t in to.split_ascii_whitespace() {
-            edges.entry(from).or_default().push(t);
+            edges[index(from)].push(index(t));
         }
     }
 
     // part 1
-    println!("{}", count("you", "out", &edges, &mut HashMap::new()));
+    println!("{}", count(you, out, &edges, &mut vec![u64::MAX; max_len]));
 
-    let svr_to_fft = count("svr", "fft", &edges, &mut HashMap::new());
-    let fft_to_dac = count("fft", "dac", &edges, &mut HashMap::new());
-    let dac_to_out = count("dac", "out", &edges, &mut HashMap::new());
+    // part 2 ...
+    // count the paths from svr to fft, fft to dac, dac to out
+    let svr_to_fft = count(svr, fft, &edges, &mut vec![u64::MAX; max_len]);
+    let fft_to_dac = count(fft, dac, &edges, &mut vec![u64::MAX; max_len]);
+    let dac_to_out = count(dac, out, &edges, &mut vec![u64::MAX; max_len]);
 
-    let svr_to_dac = count("svr", "dac", &edges, &mut HashMap::new());
-    let dac_to_fft = count("dac", "fft", &edges, &mut HashMap::new());
-    let fft_to_out = count("fft", "out", &edges, &mut HashMap::new());
+    // count the paths from svr to dac, dac to fft, fft to out
+    let svr_to_dac = count(svr, dac, &edges, &mut vec![u64::MAX; max_len]);
+    let dac_to_fft = count(dac, fft, &edges, &mut vec![u64::MAX; max_len]);
+    let fft_to_out = count(fft, out, &edges, &mut vec![u64::MAX; max_len]);
 
+    // calculate total number of paths
     println!(
         "{}",
         svr_to_fft * fft_to_dac * dac_to_out + svr_to_dac * dac_to_fft * fft_to_out
