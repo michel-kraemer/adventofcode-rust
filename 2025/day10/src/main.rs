@@ -1,5 +1,7 @@
 use std::collections::HashMap;
-use std::fs;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::{fs, thread};
 
 struct Machine {
     target_lights: Vec<bool>,
@@ -225,10 +227,33 @@ fn main() {
     println!("{total1}");
 
     // part 2 - optimized DFS that tries to prune as many branches as possible
-    let mut total2 = 0;
-    for m in &machines {
-        total2 += dfs_part2(&m.target_joltage, (1 << m.buttons.len()) - 1, &m.buttons);
-    }
+    let n_threads = thread::available_parallelism().unwrap().into();
+    let machines = Arc::new(machines);
+    let index = Arc::new(AtomicUsize::new(0));
+    let threads = (0..n_threads)
+        .map(|_| {
+            let machines = Arc::clone(&machines);
+            let index = Arc::clone(&index);
+            thread::spawn(move || {
+                let mut result = 0;
+                loop {
+                    let i = index.fetch_add(1, Ordering::Relaxed);
+                    if i >= machines.len() {
+                        break;
+                    }
+                    let m = &machines[i];
+                    result += dfs_part2(&m.target_joltage, (1 << m.buttons.len()) - 1, &m.buttons);
+                }
+                result
+            })
+        })
+        .collect::<Vec<_>>();
+
+    let total2 = threads
+        .into_iter()
+        .map(|t| t.join().unwrap())
+        .sum::<usize>();
+
     println!("{total2}");
 }
 
