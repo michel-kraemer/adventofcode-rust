@@ -28,6 +28,15 @@ challenge.
 * [Day 25 of 2023](2023/day25/src/main.rs): Using
   [Brandes' algorithm](https://doi.org/10.1080/0022250X.2001.9990249) to
   quickly calculate the betweenness centrality of graph nodes.
+* [Day 10 of 2025](2025/day10/src/main.rs): While most people approached this
+  problem using a solver (such as [S3](https://github.com/Z3Prover/z3) or
+  [good_lp](https://github.com/rust-or/good_lp)), I found a solution that
+  works completely without a 3rd party dependency. I implemented a DFS in
+  which I use heuristics to prune as many branches as possible. This is
+  definitely not the fastest approach possible, but it gets the job done in
+  reasonable time and is certainly quite unique. See my
+  [Reddit comment](https://www.reddit.com/r/adventofcode/comments/1pity70/comment/ntb36sb/)
+  for more information.
 
 ## License
 
