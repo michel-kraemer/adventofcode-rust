@@ -3,6 +3,10 @@ use std::{
     fs,
 };
 
+use crate::bitgrid::BitGrid;
+
+mod bitgrid;
+
 // Right, Down, Left, Up
 const DIRS: [(i64, i64); 4] = [(1, 0), (0, 1), (-1, 0), (0, -1)];
 
@@ -50,8 +54,8 @@ fn get_compressed(
 }
 
 /// Perform a flood fill at the given position
-fn fill(pos: (usize, usize), grid: &mut [bool], width: usize, height: usize) {
-    if grid[pos.1 * width + pos.0] {
+fn fill(pos: (usize, usize), grid: &mut BitGrid, width: usize, height: usize) {
+    if grid.get(pos.0, pos.1) {
         // nothing to do
         return;
     }
@@ -66,9 +70,9 @@ fn fill(pos: (usize, usize), grid: &mut [bool], width: usize, height: usize) {
                 && (nx as usize) < width
                 && ny >= 0
                 && (ny as usize) < height
-                && !grid[ny as usize * width + nx as usize]
+                && !grid.get(nx as usize, ny as usize)
             {
-                grid[ny as usize * width + nx as usize] = true;
+                grid.set(nx as usize, ny as usize);
                 queue.push_back((nx as usize, ny as usize));
             }
         }
@@ -110,20 +114,18 @@ fn main() {
     let width = compressed_x.values().max().unwrap() + 1;
     let height = compressed_y.values().max().unwrap() + 1;
 
-    let mut grid = vec![false; width * height];
+    let mut grid = BitGrid::new(width, height);
     for c in coords.windows(2) {
         let a = c[0].1;
         let b = c[1].1;
         if a.0 == b.0 {
             // vertical edge
             for y in a.1.min(b.1)..=a.1.max(b.1) {
-                grid[y * width + a.0] = true;
+                grid.set(a.0, y);
             }
         } else {
             // horizontal edge
-            let minx = a.0.min(b.0);
-            let maxx = a.0.max(b.0);
-            grid[(a.1 * width + minx)..=(a.1 * width + maxx)].fill(true);
+            grid.fill(a.1, a.0.min(b.0), a.0.max(b.0));
         }
     }
 
@@ -167,35 +169,11 @@ fn main() {
             // (only do this if necessary, i.e. if the area is larger than the
             // largest one already found)
             if area > max2 {
-                let mut ok = true;
                 let minx = a.1.0.min(b.1.0);
                 let maxx = a.1.0.max(b.1.0);
                 let miny = a.1.1.min(b.1.1);
                 let maxy = a.1.1.max(b.1.1);
-
-                for y in miny..=maxy {
-                    // performance optimization: check vertical edges first
-                    if !grid[y * width + minx] || !grid[y * width + maxx] {
-                        ok = false;
-                        break;
-                    }
-                }
-
-                if ok {
-                    for y in miny..=maxy {
-                        if grid
-                            .iter()
-                            .skip(y * width + minx)
-                            .take(maxx - minx + 1)
-                            .any(|b| !*b)
-                        {
-                            ok = false;
-                            break;
-                        }
-                    }
-                }
-
-                if ok {
+                if grid.is_rect_filled(minx, miny, maxx, maxy) {
                     max2 = max2.max(area);
                 }
             }
