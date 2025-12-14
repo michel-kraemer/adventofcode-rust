@@ -1,140 +1,78 @@
 use std::{
+    collections::{HashMap, VecDeque},
     fs,
-    ops::{Add, Sub},
 };
 
-/// A 2D point
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-struct Point {
-    x: u64,
-    y: u64,
+// Right, Down, Left, Up
+const DIRS: [(i64, i64); 4] = [(1, 0), (0, 1), (-1, 0), (0, -1)];
+
+/// Check if a polygon is oriented clockwise
+fn is_clockwise(coords: &[(usize, usize)]) -> bool {
+    coords
+        .windows(2)
+        .map(|c| (c[1].0 as i64 - c[0].0 as i64) * (c[1].1 as i64 + c[0].1 as i64))
+        .sum::<i64>()
+        < 0
 }
 
-impl Point {
-    fn new(x: u64, y: u64) -> Self {
-        Self { x, y }
-    }
-}
+/// Compress the given coordinates. Make sure there is space between the
+/// compressed values if necessary
+fn compress(mut orig: Vec<usize>) -> HashMap<usize, usize> {
+    orig.sort_unstable();
+    orig.dedup();
 
-impl Add<(u64, u64)> for Point {
-    type Output = Self;
-
-    fn add(self, rhs: (u64, u64)) -> Self::Output {
-        Self {
-            x: self.x + rhs.0,
-            y: self.y + rhs.1,
+    let mut result = HashMap::new();
+    let mut new = 0;
+    let mut last_orig = orig[0];
+    for v in orig {
+        if v - last_orig > 1 {
+            // only leave space if there was space in the original coordinates too
+            new += 1;
         }
+        result.insert(v, new);
+        last_orig = v;
+        new += 1;
     }
+
+    result
 }
 
-impl Sub<(u64, u64)> for Point {
-    type Output = Self;
-
-    fn sub(self, rhs: (u64, u64)) -> Self::Output {
-        Self {
-            x: self.x - rhs.0,
-            y: self.y - rhs.1,
-        }
-    }
+/// Translate an original coordinate to a compressed one
+fn get_compressed(
+    c: (usize, usize),
+    compressed_x: &HashMap<usize, usize>,
+    compressed_y: &HashMap<usize, usize>,
+) -> (usize, usize) {
+    (
+        *compressed_x.get(&c.0).unwrap(),
+        *compressed_y.get(&c.1).unwrap(),
+    )
 }
 
-/// An horizontal or vertical edge consisting of 2 points, sorted by x or y
-#[derive(Clone, Copy)]
-struct Edge {
-    min: Point,
-    max: Point,
-}
-
-impl Edge {
-    fn new(a: Point, b: Point) -> Self {
-        if a < b {
-            Self { min: a, max: b }
-        } else {
-            Self { min: b, max: a }
-        }
-    }
-}
-
-fn area(a: Point, b: Point) -> u64 {
-    (a.x.abs_diff(b.x) + 1) * (a.y.abs_diff(b.y) + 1)
-}
-
-/// Check if a point `p` lies inside the polygon made up of the horizontal edges
-/// `hedges` and the vertical edges `vedges`
-fn is_inside(p: Point, hedges: &[Edge], vedges: &[Edge]) -> bool {
-    let mut left_edges = 0;
-    let mut right_edges = 0;
-    let mut crossed_edges = 0;
-
-    let mut i = hedges.partition_point(|e| e.min.y < p.y);
-    while i < hedges.len() && hedges[i].min.y == p.y {
-        if (hedges[i].min.x..=hedges[i].max.x).contains(&p.x) {
-            // we've hit a horizontal edge, so we're inside the polygon
-            return true;
-        }
-        i += 1;
-    }
-    if i == hedges.len() {
-        return false;
+/// Perform a flood fill at the given position
+fn fill(pos: (usize, usize), grid: &mut [bool], width: usize, height: usize) {
+    if grid[pos.1 * width + pos.0] {
+        // nothing to do
+        return;
     }
 
-    let mut j = vedges.partition_point(|e| e.min.x < p.x);
-    while j < vedges.len() && vedges[j].min.x == p.x {
-        if (vedges[j].min.y..=vedges[j].max.y).contains(&p.y) {
-            // we've hit a horizontal edge, so we're inside the polygon
-            return true;
-        }
-        j += 1;
-    }
-    if j == vedges.len() {
-        return false;
-    }
-
-    for e in hedges.iter().skip(i) {
-        if (e.min.x..=e.max.x).contains(&p.x) {
-            if p.x == e.min.x {
-                // hit a corner
-                if e.max.x > p.x {
-                    right_edges += 1;
-                } else {
-                    left_edges += 1;
-                }
-                if right_edges == left_edges {
-                    // We've crossed as many right-pointing as left-pointing
-                    // edges. Increase the total number of edges crossed.
-                    crossed_edges += 1;
-                }
-            } else if p.x == e.max.x {
-                // hit a corner
-                if e.min.x > p.x {
-                    right_edges += 1;
-                } else {
-                    left_edges += 1;
-                }
-                if right_edges == left_edges {
-                    // We've crossed as many right-pointing as left-pointing
-                    // edges. Increase the total number of edges crossed.
-                    crossed_edges += 1;
-                }
-            } else {
-                // hit the inside of the edge
-                crossed_edges += 1;
+    let mut queue = VecDeque::new();
+    queue.push_back(pos);
+    while let Some((x, y)) = queue.pop_front() {
+        for (dx, dy) in DIRS {
+            let nx = x as i64 + dx;
+            let ny = y as i64 + dy;
+            if nx >= 0
+                && (nx as usize) < width
+                && ny >= 0
+                && (ny as usize) < height
+                && !grid[ny as usize * width + nx as usize]
+            {
+                grid[ny as usize * width + nx as usize] = true;
+                queue.push_back((nx as usize, ny as usize));
             }
         }
-        i += 1;
     }
-
-    // we're inside the polygon if we've crossed an odd number of edges
-    crossed_edges % 2 != 0
-}
-
-/// Check if two edges cross each other, i.e. there is an intersection point but
-/// this point is not a start or end point of one of the edges
-fn cross_edges(vert: Edge, horiz: Edge) -> bool {
-    vert.min.x > horiz.min.x
-        && vert.min.x < horiz.max.x
-        && vert.min.y < horiz.min.y
-        && vert.max.y > horiz.min.y
 }
 
 fn main() {
@@ -144,103 +82,126 @@ fn main() {
     let mut coords = Vec::new();
     for l in input.lines() {
         let (x, y) = l.split_once(',').unwrap();
-        let x = x.parse::<u64>().unwrap();
-        let y = y.parse::<u64>().unwrap();
-        coords.push(Point::new(x, y));
+        let x = x.parse::<usize>().unwrap();
+        let y = y.parse::<usize>().unwrap();
+        coords.push((x, y));
     }
 
-    // get a list of all horizontal and vertical edges
-    let mut hedges = Vec::new();
-    let mut vedges = Vec::new();
-    for i in 0..coords.len() {
-        let p1 = coords[i];
-        let p2 = coords[(i + 1) % coords.len()];
-        if p1.y == p2.y {
-            hedges.push(Edge::new(p1, p2));
+    // close the polygon - make the code a bit simpler
+    coords.push(coords[0]);
+
+    // make sure the polygon is oriented clockwise
+    if !is_clockwise(&coords) {
+        coords.reverse();
+    }
+
+    // compress x and y coordinates
+    let compressed_x = compress(coords.iter().map(|c| c.0).collect());
+    let compressed_y = compress(coords.iter().map(|c| c.1).collect());
+
+    // convert coordinates to list of tuples of original and compressed
+    // coordinates
+    let coords = coords
+        .into_iter()
+        .map(|c| (c, get_compressed(c, &compressed_x, &compressed_y)))
+        .collect::<Vec<_>>();
+
+    // draw compressed polygon into a grid
+    let width = compressed_x.values().max().unwrap() + 1;
+    let height = compressed_y.values().max().unwrap() + 1;
+
+    let mut grid = vec![false; width * height];
+    for c in coords.windows(2) {
+        let a = c[0].1;
+        let b = c[1].1;
+        if a.0 == b.0 {
+            // vertical edge
+            for y in a.1.min(b.1)..=a.1.max(b.1) {
+                grid[y * width + a.0] = true;
+            }
         } else {
-            vedges.push(Edge::new(p1, p2));
+            // horizontal edge
+            let minx = a.0.min(b.0);
+            let maxx = a.0.max(b.0);
+            grid[(a.1 * width + minx)..=(a.1 * width + maxx)].fill(true);
         }
     }
-    hedges.sort_unstable_by_key(|e| e.min.y);
-    vedges.sort_unstable_by_key(|e| e.min.x);
 
+    // flood-fill everything inside the polygon
+    for c in coords.windows(2) {
+        let a = c[0].1;
+        let b = c[1].1;
+        if a.0 == b.0 {
+            // vertical edge
+            if a.1 < b.1 {
+                // down
+                fill((a.0 - 1, a.1 + 1), &mut grid, width, height);
+            } else {
+                // up
+                fill((a.0 + 1, a.1 - 1), &mut grid, width, height);
+            }
+        } else {
+            // horizontal edge
+            if a.0 < b.0 {
+                // right
+                fill((a.0 + 1, a.1 + 1), &mut grid, width, height);
+            } else {
+                // left
+                fill((a.0 - 1, a.1 - 1), &mut grid, width, height);
+            }
+        }
+    }
+
+    // iterate over all possible rectangles
     let mut max1 = 0;
     let mut max2 = 0;
-    for (a, ca) in coords.iter().enumerate() {
-        for cb in coords.iter().skip(a + 1) {
-            let ar = area(*ca, *cb);
-            max1 = max1.max(area(*ca, *cb));
+    for (i, a) in coords.iter().enumerate() {
+        for b in coords.iter().skip(i + 1) {
+            // compute area using original coordinates
+            let area = (a.0.0.abs_diff(b.0.0) + 1) * (a.0.1.abs_diff(b.0.1) + 1);
 
-            if ar < max2 {
-                // part 2: no improvement possible
-                continue;
+            // part 1: compute the maximum area of all rectangles
+            max1 = max1.max(area);
+
+            // part 2: check if the rectangle is completely inside the polygon
+            // (only do this if necessary, i.e. if the area is larger than the
+            // largest one already found)
+            if area > max2 {
+                let mut ok = true;
+                let minx = a.1.0.min(b.1.0);
+                let maxx = a.1.0.max(b.1.0);
+                let miny = a.1.1.min(b.1.1);
+                let maxy = a.1.1.max(b.1.1);
+
+                for y in miny..=maxy {
+                    // performance optimization: check vertical edges first
+                    if !grid[y * width + minx] || !grid[y * width + maxx] {
+                        ok = false;
+                        break;
+                    }
+                }
+
+                if ok {
+                    for y in miny..=maxy {
+                        if grid
+                            .iter()
+                            .skip(y * width + minx)
+                            .take(maxx - minx + 1)
+                            .any(|b| !*b)
+                        {
+                            ok = false;
+                            break;
+                        }
+                    }
+                }
+
+                if ok {
+                    max2 = max2.max(area);
+                }
             }
-
-            // construct rectangle
-            let left = ca.x.min(cb.x);
-            let right = ca.x.max(cb.x);
-            let top = ca.y.min(cb.y);
-            let bottom = ca.y.max(cb.y);
-
-            let top_left = Point::new(left, top);
-            let bottom_left = Point::new(left, bottom);
-            let top_right = Point::new(right, top);
-            let bottom_right = Point::new(right, bottom);
-
-            // check if any of the polygon points lies inside the rectangle
-            if coords
-                .iter()
-                .any(|c| c.x > left && c.x < right && c.y > top && c.y < bottom)
-            {
-                continue;
-            }
-
-            // check if any of the rectangle's corners lies outside the polygon
-            if !is_inside(top_left, &hedges, &vedges)
-                || !is_inside(bottom_left, &hedges, &vedges)
-                || !is_inside(top_right, &hedges, &vedges)
-                || !is_inside(bottom_right, &hedges, &vedges)
-            {
-                continue;
-            }
-
-            // BUGFIX: Check the neighbors of the corners too, to make sure we
-            // don't just touch the polygon. This is not necessary for the
-            // puzzle input but makes the solution more generic.
-            if !is_inside(top_left + (1, 0), &hedges, &vedges)
-                || !is_inside(top_left + (0, 1), &hedges, &vedges)
-                || !is_inside(top_right - (1, 0), &hedges, &vedges)
-                || !is_inside(top_right + (0, 1), &hedges, &vedges)
-                || !is_inside(bottom_left + (1, 0), &hedges, &vedges)
-                || !is_inside(bottom_left - (0, 1), &hedges, &vedges)
-                || !is_inside(bottom_right - (1, 0), &hedges, &vedges)
-                || !is_inside(bottom_right - (0, 1), &hedges, &vedges)
-            {
-                continue;
-            }
-
-            // check if any of the rectangle edges crosses any of the polygon edges
-            if left < right
-                && vedges.iter().take_while(|e| e.min.x < right).any(|&v| {
-                    cross_edges(v, Edge::new(top_left, top_right))
-                        || cross_edges(v, Edge::new(bottom_left, bottom_right))
-                })
-            {
-                continue;
-            }
-
-            if top < bottom
-                && hedges.iter().take_while(|e| e.min.y < bottom).any(|&h| {
-                    cross_edges(Edge::new(top_left, bottom_left), h)
-                        || cross_edges(Edge::new(top_right, bottom_right), h)
-                })
-            {
-                continue;
-            }
-
-            max2 = max2.max(ar);
         }
     }
+
     println!("{max1}");
     println!("{max2}");
 }
