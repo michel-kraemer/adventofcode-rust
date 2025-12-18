@@ -29,7 +29,7 @@ fn dfs_part1(
         return *c;
     }
 
-    let mut result = i64::MAX;
+    let mut result = i64::MAX - 1;
     for j in i..buttons.len() {
         for &k in &buttons[j] {
             lights[k] = !lights[k];
