@@ -48,39 +48,62 @@ fn dfs_part1(
     result
 }
 
-/// Initialize a slice of length `m` with the contents `[0, 0, ..., n]` and then
+/// Initializes a list so it can be used with [combination_next]. Distributes
+/// the given number `n` to this list from the back to the front while observing
+/// the given maxima. For example, given a list `[0, 0, 0, 0]`, the maxima `[1,
+/// 2, 1, 3]`, and the number `n = 4`, the result will be `[0, 0, 1, 3]`. The
+/// function returns `true` if `n` could be distributed completely or `false`
+/// if the sum of the maxima is less than `n`.
+fn combinations_distribute(combinations: &mut [usize], maxima: &[usize], mut n: usize) -> bool {
+    assert!(!combinations.is_empty());
+    let mut i = combinations.len() - 1;
+    while n > 0 {
+        let d = n.min(maxima[i] - combinations[i]);
+        n -= d;
+        combinations[i] += d;
+        if i == 0 {
+            break;
+        }
+        i -= 1;
+    }
+    n == 0
+}
+
+/// Initialize a slice of length `m` with [combinations_distribute] and then
 /// repeatedly call this function to obtain all possible combinations of `m`
-/// integers that sum to `n`. The function returns `false` if there is no other
-/// combination.
+/// integers that sum to `n`, while observing the given maxima. The function
+/// returns `false` if there is no other combination.
 ///
-/// Example (m=3, n=4):
+/// Example (m=3, n=4, maxima=[3,2,4]):
 /// ```text
 /// [0, 0, 4]
 /// [0, 1, 3]
 /// [0, 2, 2]
-/// [0, 3, 1]
-/// [0, 4, 0]
 /// [1, 0, 3]
 /// [1, 1, 2]
 /// [1, 2, 1]
-/// [1, 3, 0]
 /// [2, 0, 2]
 /// [2, 1, 1]
 /// [2, 2, 0]
 /// [3, 0, 1]
 /// [3, 1, 0]
-/// [4, 0, 0]
 /// ```
-fn next_combination(combinations: &mut [usize]) -> bool {
-    let i = combinations.iter().rposition(|&v| v != 0).unwrap();
-    if i == 0 {
-        return false;
+fn combinations_next(combinations: &mut [usize], maxima: &[usize]) -> bool {
+    let mut i = combinations.iter().rposition(|&v| v != 0).unwrap();
+    let mut to_distribute = 0;
+    loop {
+        if i == 0 {
+            return false;
+        }
+        to_distribute += combinations[i] - 1;
+        combinations[i - 1] += 1;
+        combinations[i] = 0;
+        i -= 1;
+        if combinations[i] <= maxima[i] {
+            break;
+        }
     }
-    let v = combinations[i];
-    combinations[i - 1] += 1;
-    combinations[i] = 0;
-    combinations[combinations.len() - 1] = v - 1;
-    true
+    combinations_distribute(combinations, maxima, to_distribute)
 }
 
 fn is_button_available(i: usize, mask: u32) -> bool {
@@ -126,6 +149,17 @@ fn dfs_part2(joltage: &[usize], available_buttons_mask: u32, buttons: &[Vec<usiz
         .filter(|&(i, b)| is_button_available(i, available_buttons_mask) && b.contains(&mini))
         .collect::<Vec<_>>();
 
+    // optimization: determine how many times we can press each button at most
+    // so that the values it affects are not exceeded
+    let mut maxima = vec![0; matching_buttons.len()];
+    for (i, &(_, b)) in matching_buttons.iter().enumerate() {
+        let mut min = usize::MAX;
+        for &j in b {
+            min = min.min(joltage[j]);
+        }
+        maxima[i] = min;
+    }
+
     let mut result = usize::MAX;
 
     if !matching_buttons.is_empty() {
@@ -139,7 +173,10 @@ fn dfs_part2(joltage: &[usize], available_buttons_mask: u32, buttons: &[Vec<usiz
         // try all combinations of matching buttons
         let mut new_joltage = joltage.to_vec();
         let mut counts = vec![0; matching_buttons.len()];
-        counts[matching_buttons.len() - 1] = min;
+        if !combinations_distribute(&mut counts, &maxima, min) {
+            return result;
+        }
+
         loop {
             // count down joltage values and make sure we don't press a button
             // too often (i.e. that the number of button presses is not higher
@@ -169,7 +206,7 @@ fn dfs_part2(joltage: &[usize], available_buttons_mask: u32, buttons: &[Vec<usiz
             }
 
             // try next combination
-            if !next_combination(&mut counts) {
+            if !combinations_next(&mut counts, &maxima) {
                 break;
             }
         }
@@ -259,24 +296,73 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::next_combination;
+    use super::*;
 
     #[test]
-    fn test_next_combination() {
+    fn test_combinations1() {
         let max = 4;
-        let mut comb = vec![0, 0, 0, max];
+        let mut comb = vec![0; 4];
+        let maxima = [2, 1, 2, 4];
+        assert!(combinations_distribute(&mut comb, &maxima, max));
         for a in 0..=max {
             for b in 0..=max - a {
                 for c in 0..=max - a - b {
                     let d = max - a - b - c;
-                    assert_eq!(vec![a, b, c, d], comb);
-                    if a == 4 {
-                        assert!(!next_combination(&mut comb));
+                    let expected = vec![a, b, c, d];
+                    if expected.iter().enumerate().any(|(i, e)| *e > maxima[i]) {
+                        continue;
+                    }
+                    assert_eq!(expected, comb);
+                    if comb == vec![2, 1, 1, 0] {
+                        assert!(!combinations_next(&mut comb, &maxima));
+                        return;
                     } else {
-                        assert!(next_combination(&mut comb));
+                        assert!(combinations_next(&mut comb, &maxima));
                     }
                 }
             }
         }
+    }
+
+    #[test]
+    fn test_combinations2() {
+        let max = 4;
+        let mut comb = vec![0; 4];
+        let maxima = [2, 1, 2, 1];
+        assert!(combinations_distribute(&mut comb, &maxima, max));
+        for a in 0..=max {
+            for b in 0..=max - a {
+                for c in 0..=max - a - b {
+                    let d = max - a - b - c;
+                    let expected = vec![a, b, c, d];
+                    if expected.iter().enumerate().any(|(i, e)| *e > maxima[i]) {
+                        continue;
+                    }
+                    assert_eq!(expected, comb);
+                    if comb == vec![2, 1, 1, 0] {
+                        assert!(!combinations_next(&mut comb, &maxima));
+                        return;
+                    } else {
+                        assert!(combinations_next(&mut comb, &maxima));
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_combinations_full() {
+        let mut comb = vec![0; 4];
+        let maxima = vec![0, 1, 2, 1];
+        assert!(combinations_distribute(&mut comb, &maxima, 4));
+        assert_eq!(maxima, comb);
+        assert!(!combinations_next(&mut comb, &maxima));
+    }
+
+    #[test]
+    fn test_combinations_distribute_too_much() {
+        let mut comb = vec![0; 4];
+        let maxima = vec![0, 0, 2, 1];
+        assert!(!combinations_distribute(&mut comb, &maxima, 4));
     }
 }
