@@ -1,18 +1,12 @@
 use std::fs;
 
-use regex::Regex;
-
 fn main() {
-    let re_row = Regex::new(r"row (\d+)").unwrap();
-    let re_col = Regex::new(r"column (\d+)").unwrap();
-
     let input = fs::read_to_string("input.txt").expect("Could not read file");
-    let target_row = re_row.captures(&input).unwrap()[1]
-        .parse::<usize>()
-        .unwrap();
-    let target_col = re_col.captures(&input).unwrap()[1]
-        .parse::<usize>()
-        .unwrap();
+    let mut parts = input.split_ascii_whitespace();
+    let target_row = parts.nth(15).unwrap();
+    let target_row = target_row[..target_row.len() - 1].parse::<usize>().unwrap();
+    let target_col = parts.nth(1).unwrap();
+    let target_col = target_col[..target_col.len() - 1].parse::<usize>().unwrap();
 
     let mut x = 1usize;
     let mut y = 1usize;

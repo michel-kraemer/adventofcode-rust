@@ -1,7 +1,5 @@
 use std::{collections::HashMap, fs};
 
-use regex::Regex;
-
 fn permutations(mut people: Vec<&str>) -> Vec<Vec<&str>> {
     let mut c = vec![0; people.len()];
     let mut result = Vec::new();
@@ -31,25 +29,21 @@ fn permutations(mut people: Vec<&str>) -> Vec<Vec<&str>> {
 }
 
 fn main() {
-    let r = Regex::new(
-        r"([a-zA-Z]+) would (gain|lose) (\d+) happiness units by sitting next to ([a-zA-Z]+).",
-    )
-    .unwrap();
     for part1 in [true, false] {
         let input = fs::read_to_string("input.txt").expect("Could not read file");
 
         let mut scores = input
             .lines()
             .map(|l| {
-                let m = r.captures(l).unwrap();
-                let mut points = m.get(3).unwrap().as_str().parse::<i64>().unwrap();
-                if m.get(2).unwrap().as_str() == "lose" {
+                let mut parts = l.split_ascii_whitespace();
+                let name = parts.next().unwrap();
+                let gainlose = parts.nth(1).unwrap();
+                let mut points = parts.next().unwrap().parse::<i64>().unwrap();
+                let other = parts.nth(6).unwrap();
+                if gainlose == "lose" {
                     points = -points;
                 }
-                (
-                    (m.get(1).unwrap().as_str(), m.get(4).unwrap().as_str()),
-                    points,
-                )
+                ((name, &other[..other.len() - 1]), points)
             })
             .collect::<HashMap<_, _>>();
 
