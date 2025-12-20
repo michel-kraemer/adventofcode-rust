@@ -1,4 +1,7 @@
-use std::{fs, collections::{HashSet, BinaryHeap}};
+use std::{
+    collections::{BinaryHeap, HashSet},
+    fs,
+};
 
 #[derive(Eq, PartialEq)]
 struct Molecule(String, usize);
@@ -11,7 +14,7 @@ impl Ord for Molecule {
 
 impl PartialOrd for Molecule {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
 
@@ -40,21 +43,17 @@ fn main() {
         molecules.push(Molecule(input.to_string(), 0));
 
         let mut result = 0;
-        'outer: while !molecules.is_empty() {
-            let m = molecules.pop().unwrap();
-
+        'outer: while let Some(m) = molecules.pop() {
             for r in &replacements {
                 for i in 0..m.0.len() {
                     if m.0[i..].starts_with(r.0) {
                         let n = format!("{}{}{}", &m.0[0..i], r.1, &m.0[i + r.0.len()..]);
-                        if seen.insert(n.clone()) {
-                            if !part1 {
-                                if n == "e" {
-                                    result = m.1 + 1;
-                                    break 'outer;
-                                }
-                                molecules.push(Molecule(n, m.1 + 1));
+                        if seen.insert(n.clone()) && !part1 {
+                            if n == "e" {
+                                result = m.1 + 1;
+                                break 'outer;
                             }
+                            molecules.push(Molecule(n, m.1 + 1));
                         }
                     }
                 }
@@ -64,7 +63,7 @@ fn main() {
         if part1 {
             println!("{}", seen.len());
         } else {
-            println!("{}", result);
+            println!("{result}");
         }
     }
 }

@@ -1,5 +1,5 @@
 use std::{
-    cmp::{max, Reverse},
+    cmp::{Reverse, max},
     collections::{BTreeMap, BinaryHeap, HashMap, HashSet},
     fs,
     hash::Hash,
@@ -33,7 +33,7 @@ impl Ord for GameState {
 
 impl PartialOrd for GameState {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
 
@@ -99,11 +99,9 @@ fn main() {
         }));
 
         let mut seen = HashSet::new();
-        let mut result = None;
+        let mut result = 0;
 
-        'outer: while !queue.is_empty() {
-            let s = queue.pop().unwrap().0;
-
+        'outer: while let Some(Reverse(s)) = queue.pop() {
             for spell in [
                 Spell::MagicMissile,
                 Spell::Drain,
@@ -121,7 +119,7 @@ fn main() {
 
                 let mut s = evaluate_effects(s);
                 if s.boss_points <= 0 {
-                    result = Some(s.mana_spent);
+                    result = s.mana_spent;
                     break 'outer;
                 }
 
@@ -175,13 +173,13 @@ fn main() {
                 };
 
                 if s.boss_points <= 0 {
-                    result = Some(s.mana_spent);
+                    result = s.mana_spent;
                     break 'outer;
                 }
 
                 let mut s = evaluate_effects(s);
                 if s.boss_points <= 0 {
-                    result = Some(s.mana_spent);
+                    result = s.mana_spent;
                     break 'outer;
                 }
 
@@ -197,6 +195,6 @@ fn main() {
             }
         }
 
-        println!("{}", result.unwrap());
+        println!("{result}");
     }
 }

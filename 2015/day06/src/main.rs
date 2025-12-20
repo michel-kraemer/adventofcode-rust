@@ -11,51 +11,41 @@ fn main() {
             let to = p[p.len() - 1];
             let from = p[p.len() - 3];
             let to = to
-                .split(",")
-                .map(|i| i.parse::<usize>().unwrap())
-                .collect::<Vec<_>>();
+                .split_once(',')
+                .map(|(a, b)| (a.parse::<usize>().unwrap(), b.parse::<usize>().unwrap()))
+                .unwrap();
             let from = from
-                .split(",")
-                .map(|i| i.parse::<usize>().unwrap())
-                .collect::<Vec<_>>();
+                .split_once(',')
+                .map(|(a, b)| (a.parse::<usize>().unwrap(), b.parse::<usize>().unwrap()))
+                .unwrap();
 
-            for x in from[0]..=to[0] {
-                for y in from[1]..=to[1] {
+            for row in &mut grid[from.1..=to.1] {
+                for c in &mut row[from.0..=to.0] {
                     if l.starts_with("turn on") {
                         if part1 {
-                            grid[y][x] = 1;
+                            *c = 1;
                         } else {
-                            grid[y][x] += 1;
+                            *c += 1;
                         }
                     } else if l.starts_with("turn off") {
                         if part1 {
-                            grid[y][x] = 0;
+                            *c = 0;
+                        } else if *c > 0 {
+                            *c -= 1;
+                        }
+                    } else if part1 {
+                        if *c > 0 {
+                            *c = 0;
                         } else {
-                            if grid[y][x] > 0 {
-                                grid[y][x] -= 1;
-                            }
+                            *c = 1;
                         }
                     } else {
-                        if part1 {
-                            if grid[y][x] > 0 {
-                                grid[y][x] = 0;
-                            } else {
-                                grid[y][x] = 1;
-                            }
-                        } else {
-                            grid[y][x] += 2;
-                        }
+                        *c += 2;
                     }
                 }
             }
         }
 
-        let mut sum = 0;
-        for y in 0..1000 {
-            for x in 0..1000 {
-                sum += grid[y][x];
-            }
-        }
-        println!("{sum}");
+        println!("{}", grid.iter().flatten().sum::<i32>());
     }
 }

@@ -31,7 +31,7 @@ fn main() {
                 "jmp" => pointer = (pointer as i64 + i.1[0].parse::<i64>().unwrap() - 1) as usize,
                 "jie" => {
                     let r = registers.get(i.1[0]).unwrap_or(&0);
-                    if r % 2 == 0 {
+                    if r.is_multiple_of(2) {
                         pointer = (pointer as i64 + i.1[1].parse::<i64>().unwrap() - 1) as usize
                     }
                 }

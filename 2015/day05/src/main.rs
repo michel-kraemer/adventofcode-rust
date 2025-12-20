@@ -55,6 +55,6 @@ fn main() {
             }
         }
 
-        println!("{}", nice);
+        println!("{nice}");
     }
 }

@@ -33,7 +33,7 @@ fn main() {
     let mut matching_combinations = Vec::new();
     let r = backtrack(&containers, &mut current, 150, &mut matching_combinations);
 
-    println!("{}", r);
+    println!("{r}");
 
     let min = matching_combinations.iter().map(|c| c.len()).min().unwrap();
     let total_min = matching_combinations
@@ -41,5 +41,5 @@ fn main() {
         .filter(|c| c.len() == min)
         .count();
 
-    println!("{}", total_min);
+    println!("{total_min}");
 }

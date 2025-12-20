@@ -2,16 +2,13 @@ use std::{cmp::min, fs};
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
-    let presents = input
-        .lines()
-        .map(|line| {
-            let vs = line
-                .split("x")
-                .map(|v| v.parse::<usize>().unwrap())
-                .collect::<Vec<_>>();
-            (vs[0], vs[1], vs[2])
-        })
-        .collect::<Vec<_>>();
+    let presents = input.lines().map(|line| {
+        let vs = line
+            .split("x")
+            .map(|v| v.parse::<usize>().unwrap())
+            .collect::<Vec<_>>();
+        (vs[0], vs[1], vs[2])
+    });
 
     let mut sum = 0;
     let mut ribbon = 0;
@@ -26,13 +23,13 @@ fn main() {
         sum += m;
 
         let cubic = p.0 * p.1 * p.2;
-        let mut v = vec![p.0, p.1, p.2];
-        v.sort();
+        let mut v = [p.0, p.1, p.2];
+        v.sort_unstable();
         let perimeter = 2 * v[0] + 2 * v[1];
 
         ribbon += perimeter + cubic;
     }
 
-    println!("{}", sum);
-    println!("{}", ribbon);
+    println!("{sum}");
+    println!("{ribbon}");
 }

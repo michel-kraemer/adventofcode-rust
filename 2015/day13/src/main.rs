@@ -1,11 +1,8 @@
-use std::{
-    collections::{HashMap, HashSet},
-    fs,
-};
+use std::{collections::HashMap, fs};
 
 use regex::Regex;
 
-fn permutations<'a>(mut people: Vec<&'a str>) -> Vec<Vec<&'a str>> {
+fn permutations(mut people: Vec<&str>) -> Vec<Vec<&str>> {
     let mut c = vec![0; people.len()];
     let mut result = Vec::new();
 
@@ -34,12 +31,11 @@ fn permutations<'a>(mut people: Vec<&'a str>) -> Vec<Vec<&'a str>> {
 }
 
 fn main() {
+    let r = Regex::new(
+        r"([a-zA-Z]+) would (gain|lose) (\d+) happiness units by sitting next to ([a-zA-Z]+).",
+    )
+    .unwrap();
     for part1 in [true, false] {
-        let r = Regex::new(
-            r"([a-zA-Z]+) would (gain|lose) (\d+) happiness units by sitting next to ([a-zA-Z]+).",
-        )
-        .unwrap();
-
         let input = fs::read_to_string("input.txt").expect("Could not read file");
 
         let mut scores = input
@@ -57,12 +53,9 @@ fn main() {
             })
             .collect::<HashMap<_, _>>();
 
-        let mut people = scores
-            .keys()
-            .map(|s| s.0)
-            .collect::<HashSet<_>>()
-            .into_iter()
-            .collect::<Vec<_>>();
+        let mut people = scores.keys().map(|s| s.0).collect::<Vec<_>>();
+        people.sort_unstable();
+        people.dedup();
 
         if !part1 {
             for p in &people {
@@ -89,6 +82,6 @@ fn main() {
             .max()
             .unwrap();
 
-        println!("{}", max_happiness);
+        println!("{max_happiness}");
     }
 }

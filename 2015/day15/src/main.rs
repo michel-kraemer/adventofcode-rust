@@ -28,9 +28,9 @@ fn main() {
                         }
                     }
 
-                    for u in 0..il {
-                        if s[u] < 0 {
-                            s[u] = 0;
+                    for u in &mut s[0..il] {
+                        if *u < 0 {
+                            *u = 0;
                         }
                     }
 
@@ -44,6 +44,6 @@ fn main() {
             }
         }
 
-        println!("{}", max);
+        println!("{max}");
     }
 }

@@ -3,12 +3,11 @@ use std::fs;
 use regex::Regex;
 
 fn main() {
+    let r = Regex::new(
+        r"([a-zA-Z]+) can fly (\d+) km/s for (\d+) seconds, but then must rest for (\d+) seconds.",
+    )
+    .unwrap();
     for part1 in [true, false] {
-        let r = Regex::new(
-            r"([a-zA-Z]+) can fly (\d+) km/s for (\d+) seconds, but then must rest for (\d+) seconds.",
-        )
-        .unwrap();
-
         let input = fs::read_to_string("input.txt").expect("Could not read file");
 
         let reindeer = input

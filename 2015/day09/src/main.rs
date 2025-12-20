@@ -17,13 +17,13 @@ fn dfs<'a>(
 
     let mut result = None;
     for (dest, dist) in &distances[&city] {
-        if !seen.contains(dest) {
-            if let Some(r) = dfs(distances, dest, seen, part1) {
-                if part1 {
-                    result = Some(result.unwrap_or(usize::MAX).min(dist + r));
-                } else {
-                    result = Some(result.unwrap_or(usize::MIN).max(dist + r));
-                }
+        if !seen.contains(dest)
+            && let Some(r) = dfs(distances, dest, seen, part1)
+        {
+            if part1 {
+                result = Some(result.unwrap_or(usize::MAX).min(dist + r));
+            } else {
+                result = Some(result.unwrap_or(usize::MIN).max(dist + r));
             }
         }
     }
@@ -54,14 +54,14 @@ fn main() {
 
         let mut seen: HashSet<&str> = HashSet::new();
         let r = distances
-            .iter()
-            .map(|(city, _)| dfs(&distances, city, &mut seen, part1).unwrap());
+            .keys()
+            .map(|city| dfs(&distances, city, &mut seen, part1).unwrap());
         let r = if part1 {
             r.min().unwrap()
         } else {
             r.max().unwrap()
         };
 
-        println!("{}", r);
+        println!("{r}");
     }
 }

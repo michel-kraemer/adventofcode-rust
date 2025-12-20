@@ -51,7 +51,7 @@ fn run(b_override: Option<&str>) -> u16 {
     }
 
     let r = eval(&instructions, "a", &mut cache);
-    println!("{}", r);
+    println!("{r}");
 
     r
 }

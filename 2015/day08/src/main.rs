@@ -20,9 +20,7 @@ fn main() {
                     if c == '\\' {
                         i += 1;
                         let c2 = l[i];
-                        if c2 == '\\' {
-                            sl += 1;
-                        } else if c2 == '"' {
+                        if c2 == '\\' || c2 == '"' {
                             sl += 1;
                         } else if c2 == 'x' {
                             sl += 1;
@@ -40,9 +38,7 @@ fn main() {
                 let mut i = 0;
                 while i < l.len() {
                     let c = l[i];
-                    if c == '"' {
-                        sl += 2;
-                    } else if c == '\\' {
+                    if c == '"' || c == '\\' {
                         sl += 2;
                     } else {
                         sl += 1;

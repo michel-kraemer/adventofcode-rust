@@ -1,6 +1,6 @@
 use std::fs;
 
-fn count_neighbors(grid: &Vec<Vec<char>>, x: usize, y: usize) -> usize {
+fn count_neighbors(grid: &[Vec<char>], x: usize, y: usize) -> usize {
     let min_x = if x > 0 { x - 1 } else { 0 };
     let max_x = if x < grid[0].len() - 1 {
         x + 1
@@ -14,9 +14,9 @@ fn count_neighbors(grid: &Vec<Vec<char>>, x: usize, y: usize) -> usize {
         grid.len() - 1
     };
     let mut result = 0;
-    for yi in min_y..=max_y {
-        for xi in min_x..=max_x {
-            if !(xi == x && yi == y) && grid[yi][xi] == '#' {
+    for (yi, row) in grid.iter().enumerate().take(max_y + 1).skip(min_y) {
+        for (xi, c) in row.iter().enumerate().take(max_x + 1).skip(min_x) {
+            if !(xi == x && yi == y) && *c == '#' {
                 result += 1;
             }
         }
@@ -46,18 +46,13 @@ fn main() {
             let mut new_grid = grid.clone();
             for y in 0..grid.len() {
                 for x in 0..grid[0].len() {
-                    if !part1
-                        && ((x == 0 && y == 0)
-                            || (x == w - 1 && y == 0)
-                            || (x == 0 && y == h - 1)
-                            || (x == w - 1 && y == h - 1))
-                    {
+                    if !(part1 || x != 0 && x != w - 1 || y != 0 && y != h - 1) {
                         continue;
                     }
 
                     let mut on = grid[y][x] == '#';
                     let neighbors = count_neighbors(&grid, x, y);
-                    if on && (neighbors < 2 || neighbors > 3) {
+                    if on && !(2..=3).contains(&neighbors) {
                         on = false;
                     } else if !on && neighbors == 3 {
                         on = true;
@@ -72,15 +67,6 @@ fn main() {
             grid = new_grid;
         }
 
-        let mut sum = 0;
-        for y in 0..grid.len() {
-            for x in 0..grid[0].len() {
-                if grid[y][x] == '#' {
-                    sum += 1;
-                }
-            }
-        }
-
-        println!("{}", sum);
+        println!("{}", grid.iter().flatten().filter(|c| **c == '#').count());
     }
 }

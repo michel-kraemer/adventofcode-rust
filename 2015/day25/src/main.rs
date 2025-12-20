@@ -28,7 +28,7 @@ fn main() {
         current *= 252533;
         current %= 33554393;
         if x == target_col && y == target_row {
-            println!("{}", current);
+            println!("{current}");
             break;
         }
     }

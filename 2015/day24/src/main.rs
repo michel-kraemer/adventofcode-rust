@@ -25,8 +25,8 @@ fn find_combinations(
     }
 }
 
-fn quantum_entanglement(v: &Vec<u64>) -> u64 {
-    v.iter().map(|v| *v).reduce(|a, b| a * b).unwrap_or(0)
+fn quantum_entanglement(v: &[u64]) -> u64 {
+    v.iter().product::<u64>()
 }
 
 fn main() {
@@ -50,7 +50,7 @@ fn main() {
         combinations1.sort_unstable_by(|a, b| {
             a.len()
                 .cmp(&b.len())
-                .then(quantum_entanglement(&a).cmp(&quantum_entanglement(&b)))
+                .then(quantum_entanglement(a).cmp(&quantum_entanglement(b)))
         });
 
         'outer: for c1 in combinations1 {

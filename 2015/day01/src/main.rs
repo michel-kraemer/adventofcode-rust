@@ -11,12 +11,12 @@ fn main() {
             match c {
                 '(' => floor += 1,
                 ')' => floor -= 1,
-                _ => panic!()
+                _ => panic!(),
             }
 
             steps += 1;
             if !part1 && floor == -1 {
-                break
+                break;
             }
         }
 

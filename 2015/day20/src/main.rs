@@ -1,7 +1,7 @@
 fn factors(n: u32) -> Vec<u32> {
     let mut result = Vec::new();
     for i in 1..=(n as f64).sqrt() as u32 {
-        if n % i == 0 {
+        if n.is_multiple_of(i) {
             if n / i == i {
                 result.push(i);
             } else {
@@ -29,6 +29,6 @@ fn main() {
             house += 1;
         }
 
-        println!("{}", house);
+        println!("{house}");
     }
 }

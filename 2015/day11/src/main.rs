@@ -1,7 +1,7 @@
 fn is_valid(password: &str) -> bool {
-    let cs = password.chars().collect::<Vec<_>>();
+    let cs = password.as_bytes();
 
-    if cs.iter().any(|c| *c == 'i' || *c == 'o' || *c == 'l') {
+    if cs.iter().any(|c| *c == b'i' || *c == b'o' || *c == b'l') {
         return false;
     }
 
@@ -18,24 +18,13 @@ fn is_valid(password: &str) -> bool {
         return false;
     }
 
-    let mut contains_sequence = false;
-    i = 0;
-    while i < cs.len() - 2 {
-        let c1 = cs[i];
-        let c2 = (c1 as u8 + 1) as char;
-        let c3 = (c2 as u8 + 1) as char;
-        if cs[i + 1] == c2 && cs[i + 2] == c3 {
-            contains_sequence = true;
-            break;
+    for c in cs.windows(3) {
+        if c[1] == c[0] + 1 && c[2] == c[0] + 2 {
+            return true;
         }
-        i += 1;
     }
 
-    if !contains_sequence {
-        return false;
-    }
-
-    true
+    false
 }
 
 fn inc(password: String) -> String {
@@ -72,7 +61,7 @@ fn next(password: String) -> String {
 fn main() {
     let input = "hepxcrrq".to_string();
     let n1 = next(input);
-    println!("{}", n1);
+    println!("{n1}");
     let n2 = next(n1);
-    println!("{}", n2);
+    println!("{n2}");
 }
