@@ -39,7 +39,7 @@ fn copy_project(src: &Path, dest: &Path) -> Result<()> {
             e.file_name() == "main.rs"
         )
     }) {
-        let entry = entry.unwrap();
+        let entry = entry?;
         let relative = entry.path().strip_prefix(src)?;
         let dest = dest.join(relative);
         if entry.file_type().is_dir() {
@@ -85,6 +85,12 @@ fn replace_main_fn(main_rs: &str) -> Result<String> {
     Ok(result)
 }
 
+/// Replace all `fs::read_to_string` calls in a `main.rs` contents string with
+/// `__aoc_bench_read_to_string`.
+fn replace_read_input(main_rs: &str) -> String {
+    main_rs.replace("fs::read_to_string", "__aoc_bench_read_to_string")
+}
+
 /// Replace all `println!` calls in a `main.rs` contents string with `format!`
 /// calls. Wrap them in [std::hint::black_box] so they won't be optimized away.
 fn replace_printlns(main_rs: &str) -> String {
@@ -128,6 +134,52 @@ criterion::criterion_main!(__aoc_bench);
     ));
 }
 
+/// Add boilerplate code that reads input files
+fn add_read_input_boilerplate(main_rs: &mut String, input_files: Vec<String>) {
+    main_rs.push_str(
+        r#"
+#[inline(always)]
+fn __aoc_bench_read_to_string(path: &str) -> std::io::Result<String> {
+"#,
+    );
+
+    // inline known input files
+    for name in input_files {
+        main_rs.push_str(&format!(
+            r#"
+        if path == "{name}" {{
+            Ok(include_str!("../{name}").to_string())
+        }} else
+    "#,
+        ));
+    }
+
+    // fallback if an input file could not be inlined
+    main_rs.push_str(
+        r#"
+    {
+        eprintln!("Warning: Reading input from {path}");
+        fs::read_to_string(path)
+    }
+}
+"#,
+    );
+}
+
+/// Find all possible input files in the project directory at `path` and return
+/// their names. Do not decent into subdirectories. All files with the extension
+/// `.txt` are considered input files.
+fn find_input_files(path: &Path) -> Result<Vec<String>> {
+    let mut result = Vec::new();
+    for entry in WalkDir::new(path).max_depth(1) {
+        let entry = entry?;
+        if entry.file_type().is_file() && entry.path().extension().is_some_and(|ext| ext == "txt") {
+            result.push(entry.file_name().to_string_lossy().to_string());
+        }
+    }
+    Ok(result)
+}
+
 /// Read the `src/main.rs` file from the project directory at `path`, patch it,
 /// and write the results to the copied project directory at `bench_aoc_path`.
 fn patch_main_rs(path: &Path, bench_aoc_path: &Path, benchmark_name: String) -> Result<()> {
@@ -136,8 +188,12 @@ fn patch_main_rs(path: &Path, bench_aoc_path: &Path, benchmark_name: String) -> 
     let mut main_rs = fs::read_to_string(&orig_main_rs_path)?;
 
     main_rs = replace_main_fn(&main_rs)?;
+    main_rs = replace_read_input(&main_rs);
     main_rs = replace_printlns(&main_rs);
     add_criterion_boilerplate(&mut main_rs, benchmark_name);
+
+    let input_files = find_input_files(path)?;
+    add_read_input_boilerplate(&mut main_rs, input_files);
 
     write_file_if_necessary(&dest_main_rs_path, &main_rs)
 }
