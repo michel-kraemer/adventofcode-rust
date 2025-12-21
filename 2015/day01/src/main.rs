@@ -7,10 +7,10 @@ fn main() {
         let mut floor = 0i64;
         let mut steps = 0;
 
-        for c in input.chars() {
+        for c in input.as_bytes() {
             match c {
-                '(' => floor += 1,
-                ')' => floor -= 1,
+                b'(' => floor += 1,
+                b')' => floor -= 1,
                 _ => panic!(),
             }
 
@@ -21,9 +21,9 @@ fn main() {
         }
 
         if part1 {
-            println!("{}", floor);
+            println!("{floor}");
         } else {
-            println!("{}", steps);
+            println!("{steps}");
         }
     }
 }
