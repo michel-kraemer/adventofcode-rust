@@ -11,7 +11,7 @@ fn main() {
         let mut seen = HashSet::new();
         seen.insert((santa_x, santa_y));
 
-        for (i, c) in input.chars().enumerate() {
+        for (i, c) in input.as_bytes().iter().enumerate() {
             let (x, y) = if part1 || i % 2 == 0 {
                 (&mut santa_x, &mut santa_y)
             } else {
@@ -19,10 +19,10 @@ fn main() {
             };
 
             match c {
-                'v' => *y += 1,
-                '^' => *y -= 1,
-                '>' => *x += 1,
-                '<' => *x -= 1,
+                b'v' => *y += 1,
+                b'^' => *y -= 1,
+                b'>' => *x += 1,
+                b'<' => *x -= 1,
                 _ => panic!(),
             }
 
