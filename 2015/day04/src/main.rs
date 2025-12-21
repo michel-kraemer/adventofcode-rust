@@ -1,6 +1,9 @@
+use std::fs;
+
 fn main() {
     for part1 in [true, false] {
-        let input = "iwrupvqb";
+        let input = fs::read_to_string("input.txt").expect("Could not read file");
+        let input = input.trim();
 
         let mut i = 0;
         loop {
