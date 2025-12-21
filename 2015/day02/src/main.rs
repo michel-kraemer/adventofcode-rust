@@ -1,31 +1,37 @@
-use std::{cmp::min, fs};
+use std::fs;
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
-    let presents = input.lines().map(|line| {
-        let vs = line
-            .split("x")
-            .map(|v| v.parse::<usize>().unwrap())
-            .collect::<Vec<_>>();
-        (vs[0], vs[1], vs[2])
-    });
 
     let mut sum = 0;
     let mut ribbon = 0;
-    for p in presents {
-        let s1 = p.0 * p.1;
-        let s2 = p.1 * p.2;
-        let s3 = p.2 * p.0;
-        let m = min(s1, min(s2, s3));
+    for l in input.lines() {
+        let mut parts = l.split("x");
+        let p0 = parts.next().unwrap().parse::<usize>().unwrap();
+        let p1 = parts.next().unwrap().parse::<usize>().unwrap();
+        let p2 = parts.next().unwrap().parse::<usize>().unwrap();
+
+        let s1 = p0 * p1;
+        let s2 = p1 * p2;
+        let s3 = p2 * p0;
+        let m = s1.min(s2.min(s3));
         sum += 2 * s1;
         sum += 2 * s2;
         sum += 2 * s3;
         sum += m;
 
-        let cubic = p.0 * p.1 * p.2;
-        let mut v = [p.0, p.1, p.2];
-        v.sort_unstable();
-        let perimeter = 2 * v[0] + 2 * v[1];
+        let cubic = s1 * p2;
+        let perimeter = if p0 > p1 {
+            if p0 > p2 {
+                2 * p1 + 2 * p2
+            } else {
+                2 * p0 + 2 * p1
+            }
+        } else if p1 > p2 {
+            2 * p0 + 2 * p2
+        } else {
+            2 * p0 + 2 * p1
+        };
 
         ribbon += perimeter + cubic;
     }
