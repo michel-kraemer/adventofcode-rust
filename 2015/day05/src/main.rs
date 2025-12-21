@@ -8,22 +8,23 @@ fn main() {
         for l in input.lines() {
             if part1 {
                 let mut vowels = 0;
-                let mut last_letter = ' ';
+                let mut last_letter = b' ';
                 let mut contains_repeated = false;
                 let mut contains_bad = false;
-                for c in l.chars() {
-                    if c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' {
+                for &c in l.as_bytes() {
+                    if c == b'a' || c == b'e' || c == b'i' || c == b'o' || c == b'u' {
                         vowels += 1;
                     }
                     if c == last_letter {
                         contains_repeated = true;
                     }
-                    if (last_letter == 'a' && c == 'b')
-                        || (last_letter == 'c' && c == 'd')
-                        || (last_letter == 'p' && c == 'q')
-                        || (last_letter == 'x' && c == 'y')
+                    if (last_letter == b'a' && c == b'b')
+                        || (last_letter == b'c' && c == b'd')
+                        || (last_letter == b'p' && c == b'q')
+                        || (last_letter == b'x' && c == b'y')
                     {
                         contains_bad = true;
+                        break;
                     }
                     last_letter = c;
                 }
