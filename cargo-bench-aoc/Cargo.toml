@@ -1,0 +1,11 @@
+[package]
+name = "cargo-bench-aoc"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.100"
+clap = { version = "4.5.53", features = ["derive", "wrap_help"] }
+glob = "0.3.3"
+toml_edit = "0.24.0"
+walkdir = "2.5.0"
