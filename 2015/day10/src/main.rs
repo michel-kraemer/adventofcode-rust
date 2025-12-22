@@ -1,7 +1,8 @@
-fn look_and_say(s: String) -> String {
-    let mut result = String::new();
+use std::fs;
 
-    let s = s.chars().collect::<Vec<_>>();
+fn look_and_say(s: Vec<u8>) -> Vec<u8> {
+    let mut result = Vec::new();
+
     let mut i = 0;
     while i < s.len() {
         let mut n = 1;
@@ -10,7 +11,7 @@ fn look_and_say(s: String) -> String {
             i += 1;
             n += 1;
         }
-        result.push_str(&format!("{n}"));
+        result.push(n);
         result.push(c);
         i += 1;
     }
@@ -19,11 +20,18 @@ fn look_and_say(s: String) -> String {
 }
 
 fn main() {
-    for part1 in [true, false] {
-        let mut input = "3113322113".to_string();
-        for _ in 0..(if part1 { 40 } else { 50 }) {
-            input = look_and_say(input);
-        }
-        println!("{}", input.len());
+    let input = fs::read_to_string("input.txt").expect("Could not read file");
+    let mut bytes = input.trim().bytes().map(|b| b - b'0').collect::<Vec<_>>();
+
+    // part 1
+    for _ in 0..40 {
+        bytes = look_and_say(bytes);
     }
+    println!("{}", bytes.len());
+
+    // part 2
+    for _ in 0..10 {
+        bytes = look_and_say(bytes);
+    }
+    println!("{}", bytes.len());
 }
