@@ -75,45 +75,45 @@ AOC_VISUALIZE=true cargo run --release
 
 ## Benchmarks
 
-All measurements were performed with my [cargo bench-aoc tool](./cargo-bench-aoc/) on a MacBook Pro 16″ 2023 with an Apple M3 Pro processor. I/O (reading input files and writing answers to the terminal) is **NOT** included in the benchmark results.
+All measurements were performed with my [cargo bench-aoc](./cargo-bench-aoc/) tool on a MacBook Pro 16″ 2023 with an Apple M3 Pro processor. The tool uses [Criterion.rs](https://github.com/criterion-rs/criterion.rs) under the hood to provide accurate and reproducible benchmark results. I/O (reading input files and printing answers to the terminal) is **NOT** included in the benchmark results.
 
 ### 2015
 
 <table>
 <tr>
-<td><strong><a href="./2015/day01/">Day 1:</a></strong></td><td>6µs</td>
-<td><strong><a href="./2015/day02/">Day 2:</a></strong></td><td>42µs</td>
-<td><strong><a href="./2015/day03/">Day 3:</a></strong></td><td>415µs</td>
-<td><strong><a href="./2015/day04/">Day 4:</a></strong></td><td>633ms</td>
-<td><strong><a href="./2015/day05/">Day 5:</a></strong></td><td>168µs</td>
+<td><strong><a href="./2015/day01/src/main.rs">Day 1:</a></strong></td><td>6µs</td>
+<td><strong><a href="./2015/day02/src/main.rs">Day 2:</a></strong></td><td>42µs</td>
+<td><strong><a href="./2015/day03/src/main.rs">Day 3:</a></strong></td><td>415µs</td>
+<td><strong><a href="./2015/day04/src/main.rs">Day 4:</a></strong></td><td>633ms</td>
+<td><strong><a href="./2015/day05/src/main.rs">Day 5:</a></strong></td><td>168µs</td>
 </tr>
 <tr>
-<td><strong><a href="./2015/day06/">Day 6:</a></strong></td><td>6ms</td>
-<td><strong><a href="./2015/day07/">Day 7:</a></strong></td><td>23µs</td>
-<td><strong><a href="./2015/day08/">Day 8:</a></strong></td><td>7µs</td>
-<td><strong><a href="./2015/day09/">Day 9:</a></strong></td><td>19µs</td>
-<td><strong><a href="./2015/day10/">Day 10:</a></strong></td><td>16ms</td>
+<td><strong><a href="./2015/day06/src/main.rs">Day 6:</a></strong></td><td>6ms</td>
+<td><strong><a href="./2015/day07/src/main.rs">Day 7:</a></strong></td><td>23µs</td>
+<td><strong><a href="./2015/day08/src/main.rs">Day 8:</a></strong></td><td>7µs</td>
+<td><strong><a href="./2015/day09/src/main.rs">Day 9:</a></strong></td><td>19µs</td>
+<td><strong><a href="./2015/day10/src/main.rs">Day 10:</a></strong></td><td>16ms</td>
 </tr>
 <tr>
-<td><strong><a href="./2015/day11/">Day 11:</a></strong></td><td>8ms</td>
-<td><strong><a href="./2015/day12/">Day 12:</a></strong></td><td>125µs</td>
-<td><strong><a href="./2015/day13/">Day 13:</a></strong></td><td>42µs</td>
-<td><strong><a href="./2015/day14/">Day 14:</a></strong></td><td>23µs</td>
-<td><strong><a href="./2015/day15/">Day 15:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day11/src/main.rs">Day 11:</a></strong></td><td>8ms</td>
+<td><strong><a href="./2015/day12/src/main.rs">Day 12:</a></strong></td><td>125µs</td>
+<td><strong><a href="./2015/day13/src/main.rs">Day 13:</a></strong></td><td>42µs</td>
+<td><strong><a href="./2015/day14/src/main.rs">Day 14:</a></strong></td><td>23µs</td>
+<td><strong><a href="./2015/day15/src/main.rs">Day 15:</a></strong></td><td>3ms</td>
 </tr>
 <tr>
-<td><strong><a href="./2015/day16/">Day 16:</a></strong></td><td>...</td>
-<td><strong><a href="./2015/day17/">Day 17:</a></strong></td><td>...</td>
-<td><strong><a href="./2015/day18/">Day 18:</a></strong></td><td>...</td>
-<td><strong><a href="./2015/day19/">Day 19:</a></strong></td><td>...</td>
-<td><strong><a href="./2015/day20/">Day 20:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day16/src/main.rs">Day 16:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day17/src/main.rs">Day 17:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day18/src/main.rs">Day 18:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day19/src/main.rs">Day 19:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day20/src/main.rs">Day 20:</a></strong></td><td>...</td>
 </tr>
 <tr>
-<td><strong><a href="./2015/day21/">Day 21:</a></strong></td><td>...</td>
-<td><strong><a href="./2015/day22/">Day 22:</a></strong></td><td>...</td>
-<td><strong><a href="./2015/day23/">Day 23:</a></strong></td><td>...</td>
-<td><strong><a href="./2015/day24/">Day 24:</a></strong></td><td>...</td>
-<td><strong><a href="./2015/day25/">Day 25:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day21/src/main.rs">Day 21:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day22/src/main.rs">Day 22:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day23/src/main.rs">Day 23:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day24/src/main.rs">Day 24:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day25/src/main.rs">Day 25:</a></strong></td><td>...</td>
 </tr>
 </table>
 
