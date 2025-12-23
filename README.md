@@ -16,7 +16,7 @@ challenge.
 ⛓️‍💥 Avoid 3rd party dependencies (if possible and reasonable)
 
 🏃‍♂️‍➡️ Try to optimize performance (to the best of my knowledge and if it doesn't
-   conflict with the other goals)
+   conflict with the other goals). See [benchmarks](#benchmarks) below.
 
 🤓 Find clever solutions to complex problems that others might not have found.
   Some highlights I'm particularly proud of:
@@ -72,6 +72,50 @@ solution's directory (e.g. `cd 2025/day12`) and run the following command:
 ```bash
 AOC_VISUALIZE=true cargo run --release
 ```
+
+## Benchmarks
+
+All measurements were performed with my [cargo bench-aoc tool](./cargo-bench-aoc/) on a MacBook Pro 16″ 2023 with an Apple M3 Pro processor. I/O (reading input files and writing answers to the terminal) is **NOT** included in the benchmark results.
+
+### 2015
+
+<table>
+<tr>
+<td><strong><a href="./2015/day01/">Day 1:</a></strong></td><td>6µs</td>
+<td><strong><a href="./2015/day02/">Day 2:</a></strong></td><td>42µs</td>
+<td><strong><a href="./2015/day03/">Day 3:</a></strong></td><td>415µs</td>
+<td><strong><a href="./2015/day04/">Day 4:</a></strong></td><td>633ms</td>
+<td><strong><a href="./2015/day05/">Day 5:</a></strong></td><td>168µs</td>
+</tr>
+<tr>
+<td><strong><a href="./2015/day06/">Day 6:</a></strong></td><td>6ms</td>
+<td><strong><a href="./2015/day07/">Day 7:</a></strong></td><td>23µs</td>
+<td><strong><a href="./2015/day08/">Day 8:</a></strong></td><td>7µs</td>
+<td><strong><a href="./2015/day09/">Day 9:</a></strong></td><td>19µs</td>
+<td><strong><a href="./2015/day10/">Day 10:</a></strong></td><td>16ms</td>
+</tr>
+<tr>
+<td><strong><a href="./2015/day11/">Day 11:</a></strong></td><td>8ms</td>
+<td><strong><a href="./2015/day12/">Day 12:</a></strong></td><td>125µs</td>
+<td><strong><a href="./2015/day13/">Day 13:</a></strong></td><td>42µs</td>
+<td><strong><a href="./2015/day14/">Day 14:</a></strong></td><td>23µs</td>
+<td><strong><a href="./2015/day15/">Day 15:</a></strong></td><td>...</td>
+</tr>
+<tr>
+<td><strong><a href="./2015/day16/">Day 16:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day17/">Day 17:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day18/">Day 18:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day19/">Day 19:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day20/">Day 20:</a></strong></td><td>...</td>
+</tr>
+<tr>
+<td><strong><a href="./2015/day21/">Day 21:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day22/">Day 22:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day23/">Day 23:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day24/">Day 24:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day25/">Day 25:</a></strong></td><td>...</td>
+</tr>
+</table>
 
 ## License
 
