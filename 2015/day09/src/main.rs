@@ -17,7 +17,7 @@ fn next_permutation(mask: usize, n: u32) -> Option<usize> {
 }
 
 /// Apply a modified Held–Karp algorithm to find the shortest Hamiltonian path
-///  in the given graph of distances. The modification is as follows:
+/// in the given graph of distances. The modification is as follows:
 ///
 /// * We do not always start at city 0 and thus do not initialize the DP table
 /// * We iterate over all subset sizes `s` from `2..=n_cities` (and not just
@@ -29,7 +29,9 @@ fn next_permutation(mask: usize, n: u32) -> Option<usize> {
 ///   (the entry where all cities have been visited)
 ///
 /// For details, compare the implementation with the pseudo-code on the
-/// Wikipedia page: https://en.wikipedia.org/wiki/Held%E2%80%93Karp_algorithm
+/// Wikipedia page (https://en.wikipedia.org/wiki/Held%E2%80%93Karp_algorithm)
+/// and the solution to day 13 where we use a non-modified version of the
+/// Held–Karp algorithm.
 ///
 /// The function accepts `min` parameter, which can be set to `true` to find the
 /// shortest path and `false` to find the `longest` one.
@@ -37,22 +39,22 @@ fn find(distances: &[(&str, &str, u64)], n_cities: usize, min: bool) -> u64 {
     let mut dp = vec![vec![0; n_cities]; 1 << n_cities];
 
     for s in 2..=n_cities {
-        let mut permutation = (1 << s) - 1;
+        let mut mask: usize = (1 << s) - 1;
         loop {
-            let mask = permutation;
-
-            for k in 0..n_cities {
-                if mask & (1 << k) == 0 {
-                    continue;
-                }
+            let mut km = mask;
+            while km > 0 {
+                // select LSB and reset it
+                let k = km.trailing_zeros() as usize;
+                km &= km - 1;
 
                 let mask_without_k = mask & !(1 << k);
 
                 let mut v = if min { u64::MAX } else { 0 };
-                for m in 0..n_cities {
-                    if mask_without_k & (1 << m) == 0 {
-                        continue;
-                    }
+                let mut mm = mask_without_k;
+                while mm > 0 {
+                    let m = mm.trailing_zeros() as usize;
+                    mm &= mm - 1;
+
                     let d = dp[mask_without_k][m] + distances[m * n_cities + k].2;
                     v = if min { v.min(d) } else { v.max(d) };
                 }
@@ -60,10 +62,10 @@ fn find(distances: &[(&str, &str, u64)], n_cities: usize, min: bool) -> u64 {
                 dp[mask][k] = v;
             }
 
-            let Some(next) = next_permutation(permutation, n_cities as u32) else {
+            let Some(next) = next_permutation(mask, n_cities as u32) else {
                 break;
             };
-            permutation = next;
+            mask = next;
         }
     }
 
