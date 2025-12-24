@@ -87,39 +87,39 @@ All measurements were performed with my [cargo bench-aoc](./cargo-bench-aoc/) to
 
 <table>
 <tr>
-<td><strong><a href="./2015/day01/src/main.rs">Day 1:</a></strong></td><td>6µs</td>
-<td><strong><a href="./2015/day02/src/main.rs">Day 2:</a></strong></td><td>42µs</td>
-<td><strong><a href="./2015/day03/src/main.rs">Day 3:</a></strong></td><td>415µs</td>
-<td><strong><a href="./2015/day04/src/main.rs">Day 4:</a></strong></td><td>633ms</td>
-<td><strong><a href="./2015/day05/src/main.rs">Day 5:</a></strong></td><td>168µs</td>
+<td><strong><a href="./2015/day01/src/main.rs">Day 1:</a></strong></td><td align="right">6µs</td>
+<td><strong><a href="./2015/day02/src/main.rs">Day 2:</a></strong></td><td align="right">42µs</td>
+<td><strong><a href="./2015/day03/src/main.rs">Day 3:</a></strong></td><td align="right">415µs</td>
+<td><strong><a href="./2015/day04/src/main.rs">Day 4:</a></strong></td><td align="right">633ms</td>
+<td><strong><a href="./2015/day05/src/main.rs">Day 5:</a></strong></td><td align="right">168µs</td>
 </tr>
 <tr>
-<td><strong><a href="./2015/day06/src/main.rs">Day 6:</a></strong></td><td>6ms</td>
-<td><strong><a href="./2015/day07/src/main.rs">Day 7:</a></strong></td><td>23µs</td>
-<td><strong><a href="./2015/day08/src/main.rs">Day 8:</a></strong></td><td>7µs</td>
-<td><strong><a href="./2015/day09/src/main.rs">Day 9:</a></strong></td><td>19µs</td>
-<td><strong><a href="./2015/day10/src/main.rs">Day 10:</a></strong></td><td>16ms</td>
+<td><strong><a href="./2015/day06/src/main.rs">Day 6:</a></strong></td><td align="right">6ms</td>
+<td><strong><a href="./2015/day07/src/main.rs">Day 7:</a></strong></td><td align="right">23µs</td>
+<td><strong><a href="./2015/day08/src/main.rs">Day 8:</a></strong></td><td align="right">7µs</td>
+<td><strong><a href="./2015/day09/src/main.rs">Day 9:</a></strong></td><td align="right">19µs</td>
+<td><strong><a href="./2015/day10/src/main.rs">Day 10:</a></strong></td><td align="right">16ms</td>
 </tr>
 <tr>
-<td><strong><a href="./2015/day11/src/main.rs">Day 11:</a></strong></td><td>8ms</td>
-<td><strong><a href="./2015/day12/src/main.rs">Day 12:</a></strong></td><td>125µs</td>
-<td><strong><a href="./2015/day13/src/main.rs">Day 13:</a></strong></td><td>42µs</td>
-<td><strong><a href="./2015/day14/src/main.rs">Day 14:</a></strong></td><td>23µs</td>
-<td><strong><a href="./2015/day15/src/main.rs">Day 15:</a></strong></td><td>3ms</td>
+<td><strong><a href="./2015/day11/src/main.rs">Day 11:</a></strong></td><td align="right">8ms</td>
+<td><strong><a href="./2015/day12/src/main.rs">Day 12:</a></strong></td><td align="right">125µs</td>
+<td><strong><a href="./2015/day13/src/main.rs">Day 13:</a></strong></td><td align="right">42µs</td>
+<td><strong><a href="./2015/day14/src/main.rs">Day 14:</a></strong></td><td align="right">23µs</td>
+<td><strong><a href="./2015/day15/src/main.rs">Day 15:</a></strong></td><td align="right">3ms</td>
 </tr>
 <tr>
-<td><strong><a href="./2015/day16/src/main.rs">Day 16:</a></strong></td><td>49µs</td>
-<td><strong><a href="./2015/day17/src/main.rs">Day 17:</a></strong></td><td>43µs</td>
-<td><strong><a href="./2015/day18/src/main.rs">Day 18:</a></strong></td><td>114µs</td>
-<td><strong><a href="./2015/day19/src/main.rs">Day 19:</a></strong></td><td>...</td>
-<td><strong><a href="./2015/day20/src/main.rs">Day 20:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day16/src/main.rs">Day 16:</a></strong></td><td align="right">49µs</td>
+<td><strong><a href="./2015/day17/src/main.rs">Day 17:</a></strong></td><td align="right">43µs</td>
+<td><strong><a href="./2015/day18/src/main.rs">Day 18:</a></strong></td><td align="right">114µs</td>
+<td><strong><a href="./2015/day19/src/main.rs">Day 19:</a></strong></td><td align="right">157µs</td>
+<td><strong><a href="./2015/day20/src/main.rs">Day 20:</a></strong></td><td align="right">...</td>
 </tr>
 <tr>
-<td><strong><a href="./2015/day21/src/main.rs">Day 21:</a></strong></td><td>...</td>
-<td><strong><a href="./2015/day22/src/main.rs">Day 22:</a></strong></td><td>...</td>
-<td><strong><a href="./2015/day23/src/main.rs">Day 23:</a></strong></td><td>...</td>
-<td><strong><a href="./2015/day24/src/main.rs">Day 24:</a></strong></td><td>...</td>
-<td><strong><a href="./2015/day25/src/main.rs">Day 25:</a></strong></td><td>...</td>
+<td><strong><a href="./2015/day21/src/main.rs">Day 21:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2015/day22/src/main.rs">Day 22:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2015/day23/src/main.rs">Day 23:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2015/day24/src/main.rs">Day 24:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2015/day25/src/main.rs">Day 25:</a></strong></td><td align="right">...</td>
 </tr>
 </table>
 
