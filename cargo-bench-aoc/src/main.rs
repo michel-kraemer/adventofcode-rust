@@ -201,7 +201,7 @@ fn patch_main_rs(path: &Path, bench_aoc_path: &Path, benchmark_name: String) -> 
 /// Read the `Cargo.toml` file from the project directory at `path`, patch it,
 /// and write the results to the copied project directory at `bench_aoc_path`.
 /// Adds `Criterion` to the dependencies and adds the configuration for `cargo
-/// bench`.
+/// bench`. Also converts all relative dependency paths to absolute ones.
 fn patch_cargo_toml(path: &Path, bench_aoc_path: &Path) -> Result<String> {
     let orig_cargo_toml_path = path.join("Cargo.toml");
     let dest_cargo_toml_path = bench_aoc_path.join("Cargo.toml");
@@ -219,6 +219,19 @@ fn patch_cargo_toml(path: &Path, bench_aoc_path: &Path) -> Result<String> {
         .as_table_mut()
         .unwrap();
     dependencies_table["criterion"] = value("0");
+
+    for (_, v) in dependencies_table.iter_mut() {
+        if let Some(t) = v.as_table_like_mut()
+            && let Some(path_value) = t.get_mut("path")
+            && let Some(dependency_path) = path_value.as_str()
+        {
+            let relative_path = Path::new(dependency_path);
+            if relative_path.is_relative() {
+                let absolute_path = path.join(relative_path).canonicalize()?;
+                *path_value = value(absolute_path.to_string_lossy().as_ref());
+            }
+        }
+    }
 
     let mut bench_table = Table::default();
     bench_table["name"] = value(&benchmark_name);
