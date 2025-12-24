@@ -1,72 +1,105 @@
 use std::fs;
 
-fn count_neighbors(grid: &[Vec<char>], x: usize, y: usize) -> usize {
-    let min_x = if x > 0 { x - 1 } else { 0 };
-    let max_x = if x < grid[0].len() - 1 {
-        x + 1
-    } else {
-        grid[0].len() - 1
-    };
-    let min_y = if y > 0 { y - 1 } else { 0 };
-    let max_y = if y < grid.len() - 1 {
-        y + 1
-    } else {
-        grid.len() - 1
-    };
-    let mut result = 0;
-    for (yi, row) in grid.iter().enumerate().take(max_y + 1).skip(min_y) {
-        for (xi, c) in row.iter().enumerate().take(max_x + 1).skip(min_x) {
-            if !(xi == x && yi == y) && *c == '#' {
-                result += 1;
-            }
-        }
+/// Rows and columns
+const H: usize = 100;
+
+/// Bits per cell
+const BPC: usize = 4;
+
+/// Cells per word
+const CPW: usize = 64 / BPC;
+
+/// Words per row
+const W: usize = H.div_ceil(CPW);
+
+/// The number of iterations to perform
+const ITERATIONS: usize = 100;
+
+fn set_corner_bits(grid: &mut [u64; (H + 2) * W]) {
+    grid[W] |= 1;
+    grid[H * W] |= 1;
+    grid[W + W - 1] |= 1 << ((H % CPW - 1) * BPC);
+    grid[H * W + W - 1] |= 1 << ((H % CPW - 1) * BPC);
+}
+
+/// Run game of life for a given number of [ITERATIONS]. This implementation is
+/// based on the algorithm described in Rokicki's paper Life Algorithms, Section
+/// 2.4 "Single Instruction Multiple Data" \[1\], which is part of
+/// Gathering4Gardner's G4G13 Gift Exchange Book \[2\].
+///
+/// \[1\] Tomas Rokicki (2018). Life Algorithms.
+///     https://www.gathering4gardner.org/g4g13gift/math/RokickiTomas-GiftExchange-LifeAlgorithms-G4G13.pdf\
+/// \[2\] https://www.gathering4gardner.org/g4g13-exchange-book/
+fn run<'a>(
+    mut grid: &'a mut [u64; (H + 2) * W],
+    mut new_grid: &'a mut [u64; (H + 2) * W],
+    keep_corners: bool,
+) -> u32 {
+    if keep_corners {
+        set_corner_bits(grid);
     }
-    result
+
+    for _ in 0..ITERATIONS {
+        for y in 1..=H {
+            let cy = y * W;
+            let py = cy - W;
+            let ny = cy + W;
+
+            for w in 0..W {
+                let pw = grid[py + w];
+                let cw = grid[cy + w];
+                let nw = grid[ny + w];
+                let mut n = (pw << BPC)
+                    + pw
+                    + (pw >> BPC)
+                    + (cw << BPC)
+                    + (cw >> BPC)
+                    + (nw << BPC)
+                    + nw
+                    + (nw >> BPC);
+                if w > 0 {
+                    n += (grid[py + w - 1] + grid[cy + w - 1] + grid[ny + w - 1]) >> 60;
+                }
+                if w < W - 1 {
+                    n += (grid[py + w + 1] + grid[cy + w + 1] + grid[ny + w + 1]) << 60;
+                }
+                let ng = n | cw;
+                new_grid[cy + w] = ng & (ng >> 1) & (!((ng >> 2) | (ng >> 3))) & 0x1111111111111111;
+            }
+
+            // mask out bits not part of the HxH grid
+            new_grid[cy + W - 1] &= (1 << ((H % CPW) * BPC)) - 1;
+        }
+
+        if keep_corners {
+            set_corner_bits(new_grid);
+        }
+
+        (grid, new_grid) = (new_grid, grid);
+    }
+
+    grid.iter().map(|w| w.count_ones()).sum::<u32>()
 }
 
 fn main() {
-    for part1 in [true, false] {
-        let input = fs::read_to_string("input.txt").expect("Could not read file");
+    let input = fs::read_to_string("input.txt").expect("Could not read file");
 
-        let mut grid = input
-            .lines()
-            .map(|c| c.chars().collect::<Vec<_>>())
-            .collect::<Vec<_>>();
+    // add an empty row at the top and one at the bottom
+    let mut grid: [u64; (H + 2) * W] = [0; (H + 2) * W];
+    let mut new_grid: [u64; (H + 2) * W] = [0; (H + 2) * W];
 
-        let h = grid.len();
-        let w = grid[0].len();
-        if !part1 {
-            grid[0][0] = '#';
-            grid[h - 1][0] = '#';
-            grid[0][w - 1] = '#';
-            grid[h - 1][w - 1] = '#';
-        }
-
-        for _ in 0..100 {
-            let mut new_grid = grid.clone();
-            for y in 0..grid.len() {
-                for x in 0..grid[0].len() {
-                    if !(part1 || x != 0 && x != w - 1 || y != 0 && y != h - 1) {
-                        continue;
-                    }
-
-                    let mut on = grid[y][x] == '#';
-                    let neighbors = count_neighbors(&grid, x, y);
-                    if on && !(2..=3).contains(&neighbors) {
-                        on = false;
-                    } else if !on && neighbors == 3 {
-                        on = true;
-                    }
-                    if on {
-                        new_grid[y][x] = '#';
-                    } else {
-                        new_grid[y][x] = '.';
-                    }
-                }
+    let mut i = W;
+    for l in input.lines() {
+        for (j, b) in l.bytes().enumerate() {
+            if b == b'.' {
+                continue;
             }
-            grid = new_grid;
+            grid[i + j / CPW] |= 1 << ((j % CPW) * BPC);
         }
-
-        println!("{}", grid.iter().flatten().filter(|c| **c == '#').count());
+        i += W;
     }
+
+    let mut orig_grid = grid;
+    println!("{}", run(&mut grid, &mut new_grid, false));
+    println!("{}", run(&mut orig_grid, &mut new_grid, true));
 }
