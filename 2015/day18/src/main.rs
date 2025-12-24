@@ -1,5 +1,8 @@
 use std::fs;
 
+#[cfg(feature = "visualize")]
+use screen::Screen;
+
 /// Rows and columns
 const H: usize = 100;
 
@@ -35,9 +38,15 @@ fn run<'a>(
     mut new_grid: &'a mut [u64; (H + 2) * W],
     keep_corners: bool,
 ) -> u32 {
+    #[cfg(feature = "visualize")]
+    let mut screen = Screen::new(H, H / 2, 15);
+
     if keep_corners {
         set_corner_bits(grid);
     }
+
+    #[cfg(feature = "visualize")]
+    visualize(grid, &mut screen);
 
     for _ in 0..ITERATIONS {
         for y in 1..=H {
@@ -76,9 +85,32 @@ fn run<'a>(
         }
 
         (grid, new_grid) = (new_grid, grid);
+
+        #[cfg(feature = "visualize")]
+        visualize(grid, &mut screen);
     }
 
     grid.iter().map(|w| w.count_ones()).sum::<u32>()
+}
+
+#[cfg(feature = "visualize")]
+fn visualize(grid: &mut [u64; (H + 2) * W], screen: &mut Screen) {
+    let mut screen_grid = vec!['.'; H / 2 * H];
+    for y in 0..H / 2 {
+        for x in 0..H {
+            let mask: u64 = 1 << ((x % CPW) * BPC);
+            let t = grid[y * 2 * W + x / CPW] & mask > 0;
+            let b = grid[(y * 2 + 1) * W + x / CPW] & mask > 0;
+            let c = match (t, b) {
+                (true, true) => '█',
+                (true, false) => '▀',
+                (false, true) => '▄',
+                (false, false) => ' ',
+            };
+            screen_grid[y * H + x] = c;
+        }
+    }
+    screen.update(&screen_grid);
 }
 
 fn main() {

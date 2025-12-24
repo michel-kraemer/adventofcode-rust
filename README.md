@@ -46,19 +46,25 @@ I've created terminal visualizations of some puzzles for fun:
 <table>
   <tr>
     <td align="center">
-      <img src="2019/day13/aoc_2019_day13.gif" height="200px" /><br />
-      <a href="2019/day13/src/main.rs">2019 - Day 13: Care Package</a>
+      <img src="2015/day18/aoc_2015_day18.gif" height="200px" /><br />
+      <a href="2015/day18/src/main.rs">2015 - Day 18: Like a GIF For Your Yard</a>
     </td>
     <td align="center">
-      <img src="2024/day15/aoc_2024_day15.gif" height="200px" /><br />
-      <a href="2024/day15/src/main.rs">2024 - Day 15: Warehouse Woes</a>
+      <img src="2019/day13/aoc_2019_day13.gif" height="200px" /><br />
+      <a href="2019/day13/src/main.rs">2019 - Day 13: Care Package</a>
     </td>
   </tr>
   <tr>
     <td align="center">
+      <img src="2024/day15/aoc_2024_day15.gif" height="200px" /><br />
+      <a href="2024/day15/src/main.rs">2024 - Day 15: Warehouse Woes</a>
+    </td>
+    <td align="center">
       <img src="2025/day04/aoc_2025_day04.gif" height="200px" /><br />
       <a href="2025/day04/src/main.rs">2025 - Day 4: Printing Department</a>
     </td>
+  </tr>
+  <tr>
     <td align="center">
       <img src="2025/day12/aoc_2025_day12.gif" height="200px" /><br />
       <a href="2025/day12/src/main.rs">2025 - Day 12: Christmas Tree Farm</a>
