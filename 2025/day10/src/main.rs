@@ -1,7 +1,7 @@
 use std::collections::HashMap;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::{fs, thread};
+use std::fs;
+
+use rayon::prelude::*;
 
 struct Machine {
     target_lights: Vec<bool>,
@@ -122,8 +122,42 @@ fn count_affected_buttons(i: usize, buttons: &[Vec<usize>], available_buttons_ma
     result
 }
 
+struct CombinationsIterator {
+    maxima: Vec<usize>,
+    combinations: Vec<usize>,
+}
+
+impl CombinationsIterator {
+    fn new(m: usize, n: usize, maxima: Vec<usize>) -> Option<Self> {
+        let mut combinations = vec![0; m];
+        if !combinations_distribute(&mut combinations, &maxima, n) {
+            None
+        } else {
+            Some(Self {
+                maxima,
+                combinations,
+            })
+        }
+    }
+}
+
+impl Iterator for CombinationsIterator {
+    type Item = Vec<usize>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.combinations.is_empty() {
+            return None;
+        }
+        let r = self.combinations.clone();
+        if !combinations_next(&mut self.combinations, &self.maxima) {
+            self.combinations.clear();
+        }
+        Some(r)
+    }
+}
+
 /// Part 2: Optimized DFS that tries to prune as many branches as possible
-fn dfs_part2(joltage: &[usize], available_buttons_mask: u32, buttons: &[Vec<usize>]) -> usize {
+fn dfs_part2(joltage: Vec<usize>, available_buttons_mask: u32, buttons: &[Vec<usize>]) -> usize {
     if joltage.iter().all(|j| *j == 0) {
         return 0;
     }
@@ -172,8 +206,6 @@ fn dfs_part2(joltage: &[usize], available_buttons_mask: u32, buttons: &[Vec<usiz
         maxima[i] = min;
     }
 
-    let mut result = usize::MAX;
-
     if !matching_buttons.is_empty() {
         // create new mask so only those buttons remain that do not affect the
         // joltage value at position `mini`
@@ -183,48 +215,41 @@ fn dfs_part2(joltage: &[usize], available_buttons_mask: u32, buttons: &[Vec<usiz
         }
 
         // try all combinations of matching buttons
-        let mut new_joltage = joltage.to_vec();
-        let mut counts = vec![0; matching_buttons.len()];
-        if !combinations_distribute(&mut counts, &maxima, min) {
-            return result;
-        }
+        let Some(ci) = CombinationsIterator::new(matching_buttons.len(), min, maxima) else {
+            return usize::MAX;
+        };
 
-        loop {
-            // count down joltage values and make sure we don't press a button
-            // too often (i.e. that the number of button presses is not higher
-            // than any of the values to decrease)
-            let mut good = true;
-            new_joltage.copy_from_slice(joltage);
-            'buttons: for (bi, &cnt) in counts.iter().enumerate() {
-                if cnt == 0 {
-                    continue;
-                }
-                for &j in matching_buttons[bi].1 {
-                    if new_joltage[j] >= cnt {
-                        new_joltage[j] -= cnt;
-                    } else {
-                        good = false;
-                        break 'buttons;
+        if let Some(r) = ci
+            .par_bridge()
+            .filter_map(|counts| {
+                // count down joltage values and make sure we don't press a button
+                // too often (i.e. that the number of button presses is not higher
+                // than any of the values to decrease)
+                let mut new_joltage = joltage.clone();
+                for (bi, &cnt) in counts.iter().enumerate() {
+                    if cnt == 0 {
+                        continue;
+                    }
+                    for &j in matching_buttons[bi].1 {
+                        if new_joltage[j] >= cnt {
+                            new_joltage[j] -= cnt;
+                        } else {
+                            return None;
+                        }
                     }
                 }
-            }
 
-            if good {
                 // recurse with decreased joltage values and with remaining buttons
-                let r = dfs_part2(&new_joltage, new_mask, buttons);
-                if r != usize::MAX {
-                    result = result.min(min + r);
-                }
-            }
-
-            // try next combination
-            if !combinations_next(&mut counts, &maxima) {
-                break;
-            }
+                let r = dfs_part2(new_joltage, new_mask, buttons);
+                if r != usize::MAX { Some(min + r) } else { None }
+            })
+            .min()
+        {
+            return r;
         }
     }
 
-    result
+    usize::MAX
 }
 
 fn main() {
@@ -276,33 +301,14 @@ fn main() {
     println!("{total1}");
 
     // part 2 - optimized DFS that tries to prune as many branches as possible
-    let n_threads = thread::available_parallelism().unwrap().into();
-    let machines = Arc::new(machines);
-    let index = Arc::new(AtomicUsize::new(0));
-    let threads = (0..n_threads)
-        .map(|_| {
-            let machines = Arc::clone(&machines);
-            let index = Arc::clone(&index);
-            thread::spawn(move || {
-                let mut result = 0;
-                loop {
-                    let i = index.fetch_add(1, Ordering::Relaxed);
-                    if i >= machines.len() {
-                        break;
-                    }
-                    let m = &machines[i];
-                    result += dfs_part2(&m.target_joltage, (1 << m.buttons.len()) - 1, &m.buttons);
-                }
-                result
-            })
-        })
-        .collect::<Vec<_>>();
-
-    let total2 = threads
-        .into_iter()
-        .map(|t| t.join().unwrap())
-        .sum::<usize>();
-
+    let mut total2 = 0;
+    for m in machines {
+        total2 += dfs_part2(
+            m.target_joltage.clone(),
+            (1 << m.buttons.len()) - 1,
+            &m.buttons,
+        );
+    }
     println!("{total2}");
 }
 
@@ -376,5 +382,29 @@ mod tests {
         let mut comb = vec![0; 4];
         let maxima = vec![0, 0, 2, 1];
         assert!(!combinations_distribute(&mut comb, &maxima, 4));
+    }
+
+    #[test]
+    fn test_combinations_iterator() {
+        let max = 4;
+        let maxima = vec![2, 1, 2, 4];
+        let mut ci = CombinationsIterator::new(4, max, maxima.clone()).unwrap();
+        for a in 0..=max {
+            for b in 0..=max - a {
+                for c in 0..=max - a - b {
+                    let d = max - a - b - c;
+                    let expected = vec![a, b, c, d];
+                    if expected.iter().enumerate().any(|(i, e)| *e > maxima[i]) {
+                        continue;
+                    }
+                    let comb = ci.next().unwrap();
+                    assert_eq!(expected, comb);
+                    if comb == vec![2, 1, 1, 0] {
+                        assert!(ci.next().is_none());
+                        return;
+                    }
+                }
+            }
+        }
     }
 }
