@@ -106,8 +106,20 @@ fn combinations_next(combinations: &mut [usize], maxima: &[usize]) -> bool {
     combinations_distribute(combinations, maxima, to_distribute)
 }
 
-fn is_button_available(i: usize, mask: u32) -> bool {
-    mask & (1 << i) > 0
+/// Count how many buttons affect the joltage value at position `i`
+fn count_affected_buttons(i: usize, buttons: &[Vec<usize>], available_buttons_mask: u32) -> usize {
+    let mut result = 0;
+    let mut km = available_buttons_mask;
+    while km > 0 {
+        // select LSB and reset it
+        let k = km.trailing_zeros() as usize;
+        km &= km - 1;
+
+        if buttons[k].contains(&i) {
+            result += 1;
+        }
+    }
+    result
 }
 
 /// Part 2: Optimized DFS that tries to prune as many branches as possible
@@ -129,13 +141,7 @@ fn dfs_part2(joltage: &[usize], available_buttons_mask: u32, buttons: &[Vec<usiz
         .min_by_key(|&(i, &v)| {
             (
                 // lowest number of buttons
-                buttons
-                    .iter()
-                    .enumerate()
-                    .filter(|&(j, b)| {
-                        is_button_available(j, available_buttons_mask) && b.contains(&i)
-                    })
-                    .count(),
+                count_affected_buttons(i, buttons, available_buttons_mask),
                 // highest joltage value (negative because we're using `min_by_key`)
                 -(v as isize),
             )
@@ -143,11 +149,17 @@ fn dfs_part2(joltage: &[usize], available_buttons_mask: u32, buttons: &[Vec<usiz
         .unwrap();
 
     // get the buttons that affect the joltage value at position `mini`
-    let matching_buttons = buttons
-        .iter()
-        .enumerate()
-        .filter(|&(i, b)| is_button_available(i, available_buttons_mask) && b.contains(&mini))
-        .collect::<Vec<_>>();
+    let mut matching_buttons = Vec::new();
+    let mut km = available_buttons_mask;
+    while km > 0 {
+        // select LSB and reset it
+        let k = km.trailing_zeros() as usize;
+        km &= km - 1;
+
+        if buttons[k].contains(&mini) {
+            matching_buttons.push((k, &buttons[k]));
+        }
+    }
 
     // optimization: determine how many times we can press each button at most
     // so that the values it affects are not exceeded
