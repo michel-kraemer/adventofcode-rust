@@ -1,51 +1,86 @@
-use std::{collections::HashMap, fs};
+use std::fs;
+
+#[derive(Clone, Copy)]
+enum Instruction {
+    Hlf(usize),
+    Tpl(usize),
+    Inc(usize),
+    Jmp(isize),
+    Jie(usize, isize),
+    Jio(usize, isize),
+}
 
 fn main() {
-    for part1 in [true, false] {
-        let input = fs::read_to_string("input.txt").expect("Could not read file");
-        let instructions = input
-            .lines()
-            .map(|i| {
-                let (instr, params) = i.split_once(" ").unwrap();
-                let mut params = params.split(", ").collect::<Vec<_>>();
-                if params.len() > 1 {
-                    params[1] = params[1].strip_prefix("+").unwrap();
+    let input = fs::read_to_string("input.txt").expect("Could not read file");
+    let instructions = input
+        .lines()
+        .map(|i| {
+            let (instr, params) = i.split_once(" ").unwrap();
+            match instr {
+                "hlf" => Instruction::Hlf((params.as_bytes()[0] - b'a') as usize),
+                "tpl" => Instruction::Tpl((params.as_bytes()[0] - b'a') as usize),
+                "inc" => Instruction::Inc((params.as_bytes()[0] - b'a') as usize),
+                "jmp" => Instruction::Jmp(params.trim_start_matches("+").parse::<isize>().unwrap()),
+                "jie" => {
+                    let params = params.split_once(", ").unwrap();
+                    Instruction::Jie(
+                        (params.0.as_bytes()[0] - b'a') as usize,
+                        params.1.trim_start_matches("+").parse::<isize>().unwrap(),
+                    )
                 }
-                (instr, params)
-            })
-            .collect::<Vec<_>>();
+                "jio" => {
+                    let params = params.split_once(", ").unwrap();
+                    Instruction::Jio(
+                        (params.0.as_bytes()[0] - b'a') as usize,
+                        params.1.trim_start_matches("+").parse::<isize>().unwrap(),
+                    )
+                }
+                _ => panic!("Unknown instruction"),
+            }
+        })
+        .collect::<Vec<_>>();
 
-        let mut registers: HashMap<&str, u64> = HashMap::new();
+    for part1 in [true, false] {
+        let mut registers: [u64; 2] = [0; 2];
 
         if !part1 {
-            registers.insert("a", 1);
+            registers[0] = 1;
         }
 
         let mut pointer = 0usize;
         while pointer < instructions.len() {
-            let i = &instructions[pointer];
-            match i.0 {
-                "hlf" => *registers.entry(i.1[0]).or_default() /= 2,
-                "tpl" => *registers.entry(i.1[0]).or_default() *= 3,
-                "inc" => *registers.entry(i.1[0]).or_default() += 1,
-                "jmp" => pointer = (pointer as i64 + i.1[0].parse::<i64>().unwrap() - 1) as usize,
-                "jie" => {
-                    let r = registers.get(i.1[0]).unwrap_or(&0);
-                    if r.is_multiple_of(2) {
-                        pointer = (pointer as i64 + i.1[1].parse::<i64>().unwrap() - 1) as usize
+            let i = instructions[pointer];
+            match i {
+                Instruction::Hlf(r) => {
+                    registers[r] /= 2;
+                    pointer += 1;
+                }
+                Instruction::Tpl(r) => {
+                    registers[r] *= 3;
+                    pointer += 1;
+                }
+                Instruction::Inc(r) => {
+                    registers[r] += 1;
+                    pointer += 1;
+                }
+                Instruction::Jmp(offset) => pointer = pointer.checked_add_signed(offset).unwrap(),
+                Instruction::Jie(r, offset) => {
+                    if registers[r].is_multiple_of(2) {
+                        pointer = pointer.checked_add_signed(offset).unwrap()
+                    } else {
+                        pointer += 1;
                     }
                 }
-                "jio" => {
-                    let r = registers.get(i.1[0]).unwrap_or(&0);
-                    if *r == 1 {
-                        pointer = (pointer as i64 + i.1[1].parse::<i64>().unwrap() - 1) as usize
+                Instruction::Jio(r, offset) => {
+                    if registers[r] == 1 {
+                        pointer = pointer.checked_add_signed(offset).unwrap()
+                    } else {
+                        pointer += 1;
                     }
                 }
-                _ => panic!("Unknown instruction"),
             }
-            pointer += 1;
         }
 
-        println!("{:?}", registers["b"]);
+        println!("{}", registers[1]);
     }
 }
