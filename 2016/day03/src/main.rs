@@ -1,35 +1,55 @@
 use std::fs;
 
+fn is_triangle(a: u64, b: u64, c: u64) -> bool {
+    a + b > c && a + c > b && b + c > a
+}
+
 fn main() {
-    for part1 in [true, false] {
-        let input = fs::read_to_string("input.txt").expect("Could not read file");
-        let triangles = input
-            .lines()
-            .map(|l| {
-                l.split(' ')
-                    .filter(|i| !i.is_empty())
-                    .map(|i| i.parse::<i64>().unwrap())
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
+    let input = fs::read_to_string("input.txt").expect("Could not read file");
 
-        let triangles = if part1 {
-            triangles
+    let mut total1 = 0;
+    let mut total2 = 0;
+
+    let mut c1a = 0;
+    let mut c1b = 0;
+
+    let mut c2a = 0;
+    let mut c2b = 0;
+
+    let mut c3a = 0;
+    let mut c3b = 0;
+
+    let mut i = 0;
+    for l in input.lines() {
+        let mut parts = l
+            .split_ascii_whitespace()
+            .map(|v| v.parse::<u64>().unwrap());
+        let a = parts.next().unwrap();
+        let b = parts.next().unwrap();
+        let c = parts.next().unwrap();
+
+        if is_triangle(a, b, c) {
+            total1 += 1;
+        }
+
+        if i == 0 {
+            c1a = a;
+            c2a = b;
+            c3a = c;
+            i += 1;
+        } else if i == 1 {
+            c1b = a;
+            c2b = b;
+            c3b = c;
+            i += 1;
         } else {
-            let mut col_triangles = Vec::new();
-            for ts in triangles.chunks(3) {
-                col_triangles.push(vec![ts[0][0], ts[1][0], ts[2][0]]);
-                col_triangles.push(vec![ts[0][1], ts[1][1], ts[2][1]]);
-                col_triangles.push(vec![ts[0][2], ts[1][2], ts[2][2]]);
-            }
-            col_triangles
-        };
-
-        let good = triangles
-            .into_iter()
-            .filter(|t| t[0] + t[1] > t[2] && t[0] + t[2] > t[1] && t[1] + t[2] > t[0])
-            .count();
-
-        println!("{}", good);
+            total2 += if is_triangle(c1a, c1b, a) { 1 } else { 0 };
+            total2 += if is_triangle(c2a, c2b, b) { 1 } else { 0 };
+            total2 += if is_triangle(c3a, c3b, c) { 1 } else { 0 };
+            i = 0;
+        }
     }
+
+    println!("{total1}");
+    println!("{total2}");
 }
