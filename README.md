@@ -9,16 +9,16 @@ challenge.
 
 ## Goals
 
-🦀 Implement everything in Rust
+🦀 *Implement everything in Rust*
 
-👍 Find generalized solutions that work with every input
+👍 *Find generalized solutions that work with every input*
 
-⛓️‍💥 Avoid 3rd party dependencies (if possible and reasonable)
+⛓️‍💥 *Avoid 3rd party dependencies* (if possible and reasonable). Exceptions are [rustc-hash](https://github.com/rust-lang/rustc-hash) (because it's just too fast), [rayon](https://github.com/rayon-rs/rayon) for parallelization (only in rare cases!), and any crate necessary to do occasional [terminal visualizations](#terminal-visualizations).
 
-🏃‍♂️‍➡️ Try to optimize performance (to the best of my knowledge and if it doesn't
+🏃‍♂️‍➡️ *Try to optimize performance* (to the best of my knowledge and if it doesn't
    conflict with the other goals). See [benchmarks](#benchmarks) below.
 
-🤓 Find clever solutions to complex problems that others might not have found.
+🤓 *Find clever solutions to complex problems that others might not have found.*
   Some highlights I'm particularly proud of:
 * [Day 25 of 2018](2018/day25/src/main.rs): Combining DBSCAN with a spatial
   index based on Morton indices. Very fast!
@@ -81,7 +81,7 @@ AOC_VISUALIZE=true cargo run --release
 
 ## Benchmarks
 
-All measurements were performed with my [cargo bench-aoc](./cargo-bench-aoc/) tool on a MacBook Pro 16″ 2023 with an Apple M3 Pro processor. The tool uses [Criterion.rs](https://github.com/criterion-rs/criterion.rs) under the hood to provide accurate and reproducible benchmark results. I/O (reading input files and printing answers to the terminal) is **NOT** included in the benchmark results.
+All measurements were performed with my [cargo bench-aoc](./cargo-bench-aoc/) tool on a MacBook Pro 16″ 2023 with an Apple M3 Pro processor. The tool uses [Criterion.rs](https://github.com/criterion-rs/criterion.rs) under the hood to provide accurate and reproducible benchmark results. I/O (reading input files and printing answers to the terminal) is **NOT** included in the measurements.
 
 ### 2015
 
