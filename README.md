@@ -123,6 +123,46 @@ All measurements were performed with my [cargo bench-aoc](./cargo-bench-aoc/) to
 </tr>
 </table>
 
+### 2016
+
+<table>
+<tr>
+<td><strong><a href="./2016/day01/src/main.rs">Day 1:</a></strong></td><td align="right">2µs</td>
+<td><strong><a href="./2016/day02/src/main.rs">Day 2:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2016/day03/src/main.rs">Day 3:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2016/day04/src/main.rs">Day 4:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2016/day05/src/main.rs">Day 5:</a></strong></td><td align="right">...</td>
+</tr>
+<tr>
+<td><strong><a href="./2016/day06/src/main.rs">Day 6:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2016/day07/src/main.rs">Day 7:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2016/day08/src/main.rs">Day 8:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2016/day09/src/main.rs">Day 9:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2016/day10/src/main.rs">Day 10:</a></strong></td><td align="right">...</td>
+</tr>
+<tr>
+<td><strong><a href="./2016/day11/src/main.rs">Day 11:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2016/day12/src/main.rs">Day 12:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2016/day13/src/main.rs">Day 13:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2016/day14/src/main.rs">Day 14:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2016/day15/src/main.rs">Day 15:</a></strong></td><td align="right">...</td>
+</tr>
+<tr>
+<td><strong><a href="./2016/day16/src/main.rs">Day 16:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2016/day17/src/main.rs">Day 17:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2016/day18/src/main.rs">Day 18:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2016/day19/src/main.rs">Day 19:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2016/day20/src/main.rs">Day 20:</a></strong></td><td align="right">...</td>
+</tr>
+<tr>
+<td><strong><a href="./2016/day21/src/main.rs">Day 21:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2016/day22/src/main.rs">Day 22:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2016/day23/src/main.rs">Day 23:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2016/day24/src/main.rs">Day 24:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2016/day25/src/main.rs">Day 25:</a></strong></td><td align="right">...</td>
+</tr>
+</table>
+
 ## License
 
 The solutions are released under the **MIT license**. See the
