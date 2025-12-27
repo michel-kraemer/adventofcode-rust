@@ -4,6 +4,8 @@ use std::{
     thread,
 };
 
+const BLOCK_SIZE: i64 = 1000;
+
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
     let input = input.trim();
@@ -17,18 +19,20 @@ fn main() {
             scope.spawn(|| {
                 let mut str = input.to_string();
                 loop {
-                    let i = i.fetch_add(1, Ordering::Relaxed);
+                    let i = i.fetch_add(BLOCK_SIZE, Ordering::Relaxed);
                     if min1.load(Ordering::Relaxed) < i && min2.load(Ordering::Relaxed) < i {
                         break;
                     }
-                    str.truncate(input.len());
-                    str.push_str(&format!("{i}"));
-                    let digest = md5::compute(str.as_bytes());
-                    if digest.0[0] == 0 && digest.0[1] == 0 {
-                        if digest.0[2] == 0 {
-                            min2.fetch_min(i, Ordering::Relaxed);
-                        } else if (digest.0[2] >> 4) == 0 {
-                            min1.fetch_min(i, Ordering::Relaxed);
+                    for j in i..i + BLOCK_SIZE {
+                        str.truncate(input.len());
+                        str.push_str(&format!("{j}"));
+                        let digest = md5::compute(str.as_bytes());
+                        if digest.0[0] == 0 && digest.0[1] == 0 {
+                            if digest.0[2] == 0 {
+                                min2.fetch_min(j, Ordering::Relaxed);
+                            } else if (digest.0[2] >> 4) == 0 {
+                                min1.fetch_min(j, Ordering::Relaxed);
+                            }
                         }
                     }
                 }
