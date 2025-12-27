@@ -74,13 +74,15 @@ fn write_file_if_necessary(file_path: &Path, contents: &str) -> Result<()> {
 
 /// Replace the `main` function in a `main.rs` contents string with
 /// `__bench_aoc_main`.
-fn replace_main_fn(main_rs: &str) -> Result<String> {
+fn replace_main_fn(main_rs: &str, benchmark_name: String) -> Result<String> {
     let Some(main_fn_pos) = main_rs.find("fn main() {") else {
         bail!("Unable to find main function in main.rs");
     };
     let mut result = String::new();
     result.push_str(&main_rs[..main_fn_pos]);
-    result.push_str("fn __bench_aoc_main() {");
+    result.push_str(&format!(
+        "#[divan::bench(name = \"{benchmark_name}\")]\nfn __bench_aoc_main() {{"
+    ));
     result.push_str(&main_rs[main_fn_pos + 11..]);
     Ok(result)
 }
@@ -121,6 +123,7 @@ fn replace_printlns(main_rs: &str) -> String {
 }
 
 /// Add boilerplate code for Criterion to a `main.rs` contents string
+#[allow(unused)]
 fn add_criterion_boilerplate(main_rs: &mut String, benchmark_name: String) {
     main_rs.push_str(&format!(
         r#"
@@ -132,6 +135,17 @@ criterion::criterion_group!(__aoc_bench, __aoc_bench_criterion_benchmark);
 criterion::criterion_main!(__aoc_bench);
 "#
     ));
+}
+
+/// Add boilerplate code for Divan to a `main.rs` contents string
+fn add_divan_boilerplate(main_rs: &mut String) {
+    main_rs.push_str(
+        r#"
+fn main() {{
+    divan::main();
+}}
+"#,
+    );
 }
 
 /// Add boilerplate code that reads input files
@@ -187,10 +201,10 @@ fn patch_main_rs(path: &Path, bench_aoc_path: &Path, benchmark_name: String) -> 
     let dest_main_rs_path = bench_aoc_path.join("src").join("__bench_aoc_main.rs");
     let mut main_rs = fs::read_to_string(&orig_main_rs_path)?;
 
-    main_rs = replace_main_fn(&main_rs)?;
+    main_rs = replace_main_fn(&main_rs, benchmark_name)?;
     main_rs = replace_read_input(&main_rs);
     main_rs = replace_printlns(&main_rs);
-    add_criterion_boilerplate(&mut main_rs, benchmark_name);
+    add_divan_boilerplate(&mut main_rs);
 
     let input_files = find_input_files(path)?;
     add_read_input_boilerplate(&mut main_rs, input_files);
@@ -200,7 +214,7 @@ fn patch_main_rs(path: &Path, bench_aoc_path: &Path, benchmark_name: String) -> 
 
 /// Read the `Cargo.toml` file from the project directory at `path`, patch it,
 /// and write the results to the copied project directory at `bench_aoc_path`.
-/// Adds `Criterion` to the dependencies and adds the configuration for `cargo
+/// Adds `Divan` to the dependencies and adds the configuration for `cargo
 /// bench`. Also converts all relative dependency paths to absolute ones.
 fn patch_cargo_toml(path: &Path, bench_aoc_path: &Path) -> Result<String> {
     let orig_cargo_toml_path = path.join("Cargo.toml");
@@ -218,7 +232,7 @@ fn patch_cargo_toml(path: &Path, bench_aoc_path: &Path) -> Result<String> {
         .or_insert(Table::default().into())
         .as_table_mut()
         .unwrap();
-    dependencies_table["criterion"] = value("0");
+    dependencies_table["divan"] = value("0");
 
     for (_, v) in dependencies_table.iter_mut() {
         if let Some(t) = v.as_table_like_mut()
@@ -271,9 +285,20 @@ fn bench(path: &str) -> Result<()> {
     let benchmark_name = patch_cargo_toml(&path, &bench_aoc_path)?;
     patch_main_rs(&path, &bench_aoc_path, benchmark_name)?;
 
+    println!("--------- Running benchmark for at least 5s and no more than 60s ...");
+
     let mut process = std::process::Command::new("cargo")
-        .args(["bench", "--target-dir", ".."])
-        .current_dir(bench_aoc_path)
+        .args([
+            "bench",
+            "--target-dir",
+            "..",
+            "--",
+            "--min-time",
+            "5",
+            "--max-time",
+            "60",
+        ])
+        .current_dir(&bench_aoc_path)
         .spawn()?;
     process.wait()?;
 

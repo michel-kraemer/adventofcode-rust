@@ -1,15 +1,15 @@
 # cargo bench-aoc
 
-A command-line tool to benchmark my solutions to the Advent of Code. 
+A command-line tool to benchmark my solutions to the Advent of Code.
 
-The tool uses [Criterion.rs](https://github.com/criterion-rs/criterion.rs) under the hood to provide accurate and reproducible benchmark results. I/O (i.e. reading input files and printing the answers to the terminal) is excluded.
+The tool uses [Divan](https://github.com/nvzqz/divan) under the hood to provide accurate and reproducible benchmark results. I/O (i.e. reading input files and printing the answers to the terminal) is excluded.
 
 Since all my solutions are self-contained programs, bench-aoc uses a little bit of trickery to temporarily convert a project to a benchmark:
 
 * The tool copies the project to the temporary subdirectory `target/bench-aoc`.
-* It then modifies the `Cargo.toml` in the temporary directory to add Criterion.rs as a dependency and to configure `cargo bench`.
+* It then modifies the `Cargo.toml` in the temporary directory to add Divan as a dependency and to configure `cargo bench`.
 * Further, it patches the temporary `main.rs` file as follows:
-  * It adds boilerplate code to benchmark the main function with Criterion.rs.
+  * It adds boilerplate code to benchmark the main function with Divan.
   * It replaces `fs::read_to_string` statements with the contents of the puzzle's input file.
   * It replaces `println!` with `format!` so the answers will not be printed to the terminal anymore. Formatting still happens, though, as it might be part of the solution.
 * Finally, the tool calls `cargo bench` from the temporary directory.

@@ -81,17 +81,17 @@ AOC_VISUALIZE=true cargo run --release
 
 ## Benchmarks
 
-All measurements were performed with my [cargo bench-aoc](./cargo-bench-aoc/) tool on a MacBook Pro 16″ 2023 with an Apple M3 Pro processor. The tool uses [Criterion.rs](https://github.com/criterion-rs/criterion.rs) under the hood to provide accurate and reproducible benchmark results. I/O (reading input files and printing answers to the terminal) is **NOT** included in the measurements.
+All measurements were performed with my [cargo bench-aoc](./cargo-bench-aoc/) tool on a MacBook Pro 16″ 2023 with an Apple M3 Pro processor. The tool uses [Divan](https://github.com/nvzqz/divan) under the hood to provide accurate and reproducible benchmark results. I/O (reading input files and printing answers to the terminal) is **NOT** included in the measurements.
 
 ### 2015
 
 <table>
 <tr>
 <td><strong><a href="./2015/day01/src/main.rs">Day 1:</a></strong></td><td align="right">6µs</td>
-<td><strong><a href="./2015/day02/src/main.rs">Day 2:</a></strong></td><td align="right">42µs</td>
-<td><strong><a href="./2015/day03/src/main.rs">Day 3:</a></strong></td><td align="right">99µs</td>
-<td><strong><a href="./2015/day04/src/main.rs">Day 4:</a></strong></td><td align="right">179ms</td>
-<td><strong><a href="./2015/day05/src/main.rs">Day 5:</a></strong></td><td align="right">168µs</td>
+<td><strong><a href="./2015/day02/src/main.rs">Day 2:</a></strong></td><td align="right">41µs</td>
+<td><strong><a href="./2015/day03/src/main.rs">Day 3:</a></strong></td><td align="right">73µs</td>
+<td><strong><a href="./2015/day04/src/main.rs">Day 4:</a></strong></td><td align="right">143ms</td>
+<td><strong><a href="./2015/day05/src/main.rs">Day 5:</a></strong></td><td align="right">180µs</td>
 </tr>
 <tr>
 <td><strong><a href="./2015/day06/src/main.rs">Day 6:</a></strong></td><td align="right">6ms</td>
@@ -108,18 +108,18 @@ All measurements were performed with my [cargo bench-aoc](./cargo-bench-aoc/) to
 <td><strong><a href="./2015/day15/src/main.rs">Day 15:</a></strong></td><td align="right">3ms</td>
 </tr>
 <tr>
-<td><strong><a href="./2015/day16/src/main.rs">Day 16:</a></strong></td><td align="right">49µs</td>
+<td><strong><a href="./2015/day16/src/main.rs">Day 16:</a></strong></td><td align="right">53µs</td>
 <td><strong><a href="./2015/day17/src/main.rs">Day 17:</a></strong></td><td align="right">43µs</td>
-<td><strong><a href="./2015/day18/src/main.rs">Day 18:</a></strong></td><td align="right">114µs</td>
-<td><strong><a href="./2015/day19/src/main.rs">Day 19:</a></strong></td><td align="right">157µs</td>
+<td><strong><a href="./2015/day18/src/main.rs">Day 18:</a></strong></td><td align="right">116µs</td>
+<td><strong><a href="./2015/day19/src/main.rs">Day 19:</a></strong></td><td align="right">155µs</td>
 <td><strong><a href="./2015/day20/src/main.rs">Day 20:</a></strong></td><td align="right">12ms</td>
 </tr>
 <tr>
 <td><strong><a href="./2015/day21/src/main.rs">Day 21:</a></strong></td><td align="right">3µs</td>
 <td><strong><a href="./2015/day22/src/main.rs">Day 22:</a></strong></td><td align="right">185µs</td>
 <td><strong><a href="./2015/day23/src/main.rs">Day 23:</a></strong></td><td align="right">5µs</td>
-<td><strong><a href="./2015/day24/src/main.rs">Day 24:</a></strong></td><td align="right">397µs</td>
-<td><strong><a href="./2015/day25/src/main.rs">Day 25:</a></strong></td><td align="right">170ns</td>
+<td><strong><a href="./2015/day24/src/main.rs">Day 24:</a></strong></td><td align="right">416µs</td>
+<td><strong><a href="./2015/day25/src/main.rs">Day 25:</a></strong></td><td align="right">180ns</td>
 </tr>
 </table>
 
@@ -129,8 +129,8 @@ All measurements were performed with my [cargo bench-aoc](./cargo-bench-aoc/) to
 <tr>
 <td><strong><a href="./2016/day01/src/main.rs">Day 1:</a></strong></td><td align="right">2µs</td>
 <td><strong><a href="./2016/day02/src/main.rs">Day 2:</a></strong></td><td align="right">5µs</td>
-<td><strong><a href="./2016/day03/src/main.rs">Day 3:</a></strong></td><td align="right">51µs</td>
-<td><strong><a href="./2016/day04/src/main.rs">Day 4:</a></strong></td><td align="right">53µs</td>
+<td><strong><a href="./2016/day03/src/main.rs">Day 3:</a></strong></td><td align="right">54µs</td>
+<td><strong><a href="./2016/day04/src/main.rs">Day 4:</a></strong></td><td align="right">55µs</td>
 <td><strong><a href="./2016/day05/src/main.rs">Day 5:</a></strong></td><td align="right">...</td>
 </tr>
 <tr>
