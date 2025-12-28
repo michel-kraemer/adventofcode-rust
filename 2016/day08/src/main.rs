@@ -1,30 +1,51 @@
 use std::fs;
 
-fn transpose(pattern: Vec<Vec<bool>>) -> Vec<Vec<bool>> {
-    let mut new_pattern = vec![vec![false; pattern.len()]; pattern[0].len()];
-    for (y, row) in pattern.into_iter().enumerate() {
-        for (x, cell) in row.iter().enumerate() {
-            new_pattern[x][y] = *cell;
+fn rotate_down(grid: &mut [[bool; 50]; 6], x: usize, n: usize) {
+    assert!(n < grid.len());
+    assert!(x < grid[0].len());
+
+    let mut tmp: [bool; 6] = [false; 6];
+
+    let left = grid.len() - n;
+    let right = n;
+
+    if left <= right {
+        for y in 0..left {
+            tmp[y] = grid[y][x];
+        }
+        for y in 0..right {
+            grid[y][x] = grid[left + y][x];
+        }
+        for y in 0..left {
+            grid[right + y][x] = tmp[y];
+        }
+    } else {
+        for y in 0..grid.len() - left {
+            tmp[y] = grid[y + left][x];
+        }
+        for y in (right..grid.len()).rev() {
+            grid[y][x] = grid[y - n][x];
+        }
+        for y in 0..grid.len() - left {
+            grid[y][x] = tmp[y];
         }
     }
-    new_pattern
 }
 
-#[allow(clippy::needless_range_loop)]
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
     let instructions = input.lines().collect::<Vec<_>>();
 
-    let mut grid = vec![vec![false; 50]; 6];
+    let mut grid = [[false; 50]; 6];
     for i in instructions {
         if i.starts_with("rect") {
             let (_, size) = i.split_once(' ').unwrap();
             let (w, h) = size.split_once('x').unwrap();
             let w = w.parse::<usize>().unwrap();
             let h = h.parse::<usize>().unwrap();
-            for x in 0..w {
-                for y in 0..h {
-                    grid[y][x] = true;
+            for row in grid.iter_mut().take(h) {
+                for c in row.iter_mut().take(w) {
+                    *c = true;
                 }
             }
         } else if i.starts_with("rotate row") {
@@ -33,32 +54,32 @@ fn main() {
             let row = row.parse::<usize>().unwrap();
             let len = len.parse::<usize>().unwrap();
             grid[row].rotate_right(len);
-        } else if i.starts_with("rotate column") {
+        } else {
             let remainder = &i[16..];
             let (col, len) = remainder.split_once(" by ").unwrap();
             let col = col.parse::<usize>().unwrap();
             let len = len.parse::<usize>().unwrap();
-            grid = transpose(grid);
-            grid[col].rotate_right(len);
-            grid = transpose(grid);
+            rotate_down(&mut grid, col, len);
         }
     }
 
     let mut result = 0;
-    for y in 0..grid.len() {
-        for x in 0..grid[y].len() {
-            if grid[y][x] {
+    for row in &grid {
+        for &c in row {
+            if c {
                 result += 1;
             }
         }
     }
 
-    println!("{}", result);
+    println!("{result}");
 
-    grid.iter().for_each(|r| {
+    for r in grid {
         println!(
             "{}",
-            String::from_iter(r.iter().map(|b| if *b { '█' } else { ' ' }))
-        )
-    });
+            r.iter()
+                .map(|b| if *b { '█' } else { ' ' })
+                .collect::<String>()
+        );
+    }
 }
