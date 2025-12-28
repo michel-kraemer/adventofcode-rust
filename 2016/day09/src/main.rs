@@ -1,47 +1,46 @@
-use std::{fs, str::from_utf8};
+use std::fs;
 
-fn decompress(s: &[u8], part1: bool) -> usize {
+fn decompress(s: &[u8]) -> (usize, usize) {
     let mut i = 0;
-    let mut result = 0;
+    let mut result1 = 0;
+    let mut result2 = 0;
 
     while i < s.len() {
         if s[i] == b'(' {
-            let mut e = i;
-            let mut j = 0;
-            let mut r = 0;
+            let mut e = i + 1;
 
-            while e < s.len() {
-                if s[e] == b'x' {
-                    j = from_utf8(&s[i + 1..e]).unwrap().parse::<usize>().unwrap();
-                    r = e + 1;
-                } else if s[e] == b')' {
-                    r = from_utf8(&s[r..e]).unwrap().parse::<usize>().unwrap();
-                    break;
-                }
+            let mut j = 0;
+            while e < s.len() && s[e] != b'x' {
+                j *= 10;
+                j += (s[e] - b'0') as usize;
                 e += 1;
             }
+            e += 1;
 
-            let add = if part1 {
-                j
-            } else {
-                decompress(&s[e + 1..e + j + 1], part1)
-            };
+            let mut r = 0;
+            while e < s.len() && s[e] != b')' {
+                r *= 10;
+                r += (s[e] - b'0') as usize;
+                e += 1;
+            }
+            e += 1;
 
-            i = e + j + 1;
-            result += add * r;
+            i = e + j;
+            result1 += j * r;
+            result2 += decompress(&s[e..i]).1 * r;
         } else {
             i += 1;
-            result += 1;
+            result1 += 1;
+            result2 += 1;
         }
     }
 
-    result
+    (result1, result2)
 }
 
 fn main() {
-    for part1 in [true, false] {
-        let input = fs::read_to_string("input.txt").expect("Could not read file");
-        let result: usize = input.lines().map(|l| decompress(l.as_bytes(), part1)).sum();
-        println!("{}", result);
-    }
+    let input = fs::read_to_string("input.txt").expect("Could not read file");
+    let (total1, total2) = decompress(input.trim().as_bytes());
+    println!("{total1}");
+    println!("{total2}");
 }
