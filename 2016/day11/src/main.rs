@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, collections::BinaryHeap, fs};
+use std::{collections::VecDeque, fs};
 
 use rustc_hash::FxHashSet;
 
@@ -62,49 +62,37 @@ impl Building {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-struct State {
-    steps: usize,
-    building: Building,
-}
-
-impl Ord for State {
-    fn cmp(&self, other: &Self) -> Ordering {
-        other.steps.cmp(&self.steps)
-    }
-}
-
-impl PartialOrd for State {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
 /// Try to move one or two items up (or down). Add the new state to the given
 /// map of `seen` states and the given `queue`.
-fn try_move(up: bool, state: State, seen: &mut FxHashSet<Building>, queue: &mut BinaryHeap<State>) {
+fn try_move(
+    up: bool,
+    steps: usize,
+    building: Building,
+    seen: &mut FxHashSet<Building>,
+    queue: &mut VecDeque<(usize, Building)>,
+) {
     // get the elevator's current and next position
-    let from = state.building.get_elevator() as usize;
+    let from = building.get_elevator() as usize;
     let to = if up { from + 1 } else { from - 1 };
 
     // for all possible combinations of (generators, microchips) ...
     for m in [(2, 0), (1, 0), (1, 1), (0, 1), (0, 2)] {
         // check if we have enough items to move ...
-        if state.building.get_generators(from) >= m.0
-            && state.building.get_microchips(from) >= m.1
+        if building.get_generators(from) >= m.0
+            && building.get_microchips(from) >= m.1
             // ... and if the target floor will be valid after the move
             // (a valid state is one where there is either no generator or the
             // number of microchips does not exceed the number of generators)
-            && (state.building.get_generators(to) == 0
-                || state.building.get_generators(to) + m.0
-                    >= state.building.get_microchips(to) + m.1)
+            && (building.get_generators(to) == 0
+                || building.get_generators(to) + m.0
+                    >= building.get_microchips(to) + m.1)
             // ... and if the current floor will be valid after the move
-            && (state.building.get_generators(from) - m.0 == 0
-                || state.building.get_generators(from) - m.0
-                    >= state.building.get_microchips(from) - m.1)
+            && (building.get_generators(from) - m.0 == 0
+                || building.get_generators(from) - m.0
+                    >= building.get_microchips(from) - m.1)
         {
             // create new state
-            let mut new_building = state.building;
+            let mut new_building = building;
             if up {
                 new_building.inc_elevator();
             } else {
@@ -116,10 +104,7 @@ fn try_move(up: bool, state: State, seen: &mut FxHashSet<Building>, queue: &mut 
             new_building.inc_microchips(to, m.1);
 
             if seen.insert(new_building) {
-                queue.push(State {
-                    steps: state.steps + 1,
-                    building: new_building,
-                });
+                queue.push_back((steps + 1, new_building));
             }
         }
     }
@@ -144,36 +129,32 @@ fn main() {
         }
     }
 
-    // perform Dijkstra's for both parts
+    // perform BFS for both parts
     for part1 in [true, false] {
-        let mut initial_state = State {
-            steps: 0,
-            building: initial_building,
-        };
-
+        let mut initial_building = initial_building;
         if !part1 {
-            initial_state.building.inc_generators(0, 2);
-            initial_state.building.inc_microchips(0, 2);
+            initial_building.inc_generators(0, 2);
+            initial_building.inc_microchips(0, 2);
         }
 
-        let mut queue = BinaryHeap::new();
-        queue.push(initial_state);
+        let mut queue: VecDeque<(usize, Building)> = VecDeque::new();
+        queue.push_back((0, initial_building));
 
         let mut seen: FxHashSet<Building> = FxHashSet::default();
         seen.insert(initial_building);
 
-        while let Some(state) = queue.pop() {
-            if state.building.0 & ((1 << 24) - 1) == 0 {
-                // Floors 0-2 are empty. All items must be in floor 3.
-                println!("{}", state.steps);
+        while let Some((steps, building)) = queue.pop_front() {
+            if building.0 & ((1 << 24) - 1) == 0 {
+                // Floors 0-2 are empty. All items must be on floor 3.
+                println!("{}", steps);
                 break;
             }
 
-            if state.building.get_elevator() > 0 {
-                try_move(false, state, &mut seen, &mut queue);
+            if building.get_elevator() > 0 {
+                try_move(false, steps, building, &mut seen, &mut queue);
             }
-            if state.building.get_elevator() < 3 {
-                try_move(true, state, &mut seen, &mut queue);
+            if building.get_elevator() < 3 {
+                try_move(true, steps, building, &mut seen, &mut queue);
             }
         }
     }
