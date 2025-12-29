@@ -1,8 +1,8 @@
 [package]
 name = "day14"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 md5 = "0.7.0"
-rayon = "1.8.0"
+rayon = "1.11.0"
