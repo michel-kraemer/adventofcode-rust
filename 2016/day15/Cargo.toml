@@ -1,7 +1,4 @@
 [package]
 name = "day15"
 version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-num = "0.4.1"
+edition = "2024"
