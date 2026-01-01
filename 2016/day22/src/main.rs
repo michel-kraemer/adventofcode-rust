@@ -3,12 +3,15 @@ use std::{collections::VecDeque, fs};
 
 use rustc_hash::FxHashSet;
 
+#[cfg(feature = "visualize")]
+mod visualize;
+
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
-struct State {
-    empty_x: i32,
-    empty_y: i32,
-    goal_x: i32,
-    goal_y: i32,
+pub struct State {
+    pub empty_x: i32,
+    pub empty_y: i32,
+    pub goal_x: i32,
+    pub goal_y: i32,
 }
 
 fn main() {
@@ -131,6 +134,9 @@ fn main() {
             });
         }
     }
+
+    #[cfg(feature = "visualize")]
+    visualize::visualize(&grid_with_sizes, &grid, *empty, max_x);
 
     // BFS
     let mut queue = VecDeque::new();
