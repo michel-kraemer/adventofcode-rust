@@ -1,106 +1,136 @@
-use std::{
-    cmp::Reverse,
-    collections::{hash_map::DefaultHasher, BTreeSet, BinaryHeap, HashSet},
-    fs,
-    hash::{Hash, Hasher},
-};
+use std::{collections::VecDeque, fs};
 
-#[derive(PartialEq, Eq)]
-struct State {
-    steps: usize,
-    x: i32,
-    y: i32,
-    digits_found: BTreeSet<char>,
-}
-
-impl Ord for State {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.steps.cmp(&other.steps)
+/// Computes the next permutation of a bitmask where `k` out of `n` bits are
+/// set, in lexicographical order. For example, if `k` is 3 and the current
+/// bitmask is 00010011, the next items would be 00010101, 00010110, 00011001,
+/// etc.
+///
+/// See https://graphics.stanford.edu/~seander/bithacks.html#NextBitPermutation
+fn next_permutation(mask: usize, n: u32) -> Option<usize> {
+    if n - mask.count_ones() == mask.trailing_zeros() {
+        // there is no next permutation
+        None
+    } else {
+        let t = mask | (mask - 1);
+        Some((t + 1) | (((!t & (!t).wrapping_neg()) - 1) >> (mask.trailing_zeros() + 1)))
     }
 }
 
-impl PartialOrd for State {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
+/// Apply the Held–Karp algorithm
+/// (https://en.wikipedia.org/wiki/Held%E2%80%93Karp_algorithm) to find the
+/// shortest Hamiltonian cycle in the given distance graph. The function returns
+/// both the shortest cycle (for part 2) and the shortest path starting at the
+/// element at index 0 and visiting all other elements (for part 1).
+fn held_karp(distances: &[Vec<i64>]) -> (i64, i64) {
+    let mut dp = vec![vec![0; distances.len()]; 1 << distances.len()];
 
-fn key(s: &State) -> u64 {
-    let mut h = DefaultHasher::new();
-    s.x.hash(&mut h);
-    s.y.hash(&mut h);
-    s.digits_found.hash(&mut h);
-    h.finish()
+    for (k, &dist) in distances[0].iter().enumerate().skip(1) {
+        dp[1 << k][k] = dist;
+    }
+
+    for s in 2..distances.len() {
+        let mut permutation: usize = (1 << s) - 1;
+        loop {
+            let mask = permutation << 1;
+
+            let mut km = mask;
+            while km > 0 {
+                // select LSB and reset it
+                let k = km.trailing_zeros() as usize;
+                km &= km - 1;
+
+                let mask_without_k = mask & !(1 << k);
+
+                let mut v = i64::MAX;
+                let mut mm = mask_without_k;
+                while mm > 0 {
+                    let m = mm.trailing_zeros() as usize;
+                    mm &= mm - 1;
+
+                    let d = dp[mask_without_k][m] + distances[m][k];
+                    v = v.min(d)
+                }
+
+                dp[mask][k] = v;
+            }
+
+            let Some(next) = next_permutation(permutation, distances.len() as u32 - 1) else {
+                break;
+            };
+            permutation = next;
+        }
+    }
+
+    let mut result_path = i64::MAX;
+    let mut result_cycle = i64::MAX;
+    for (k, &dist) in distances[0].iter().enumerate().skip(1) {
+        let o = dp[(1 << distances.len()) - 2][k];
+        result_path = result_path.min(o);
+        result_cycle = result_cycle.min(o + dist);
+    }
+    (result_path, result_cycle)
 }
 
 fn main() {
-    for part1 in [true, false] {
-        let input = fs::read_to_string("input.txt").expect("Could not read file");
+    let input = fs::read_to_string("input.txt").expect("Could not read file");
 
-        let grid = input
-            .lines()
-            .map(|l| l.chars().collect::<Vec<_>>())
-            .collect::<Vec<_>>();
+    let grid = input
+        .lines()
+        .map(|l| l.bytes().collect::<Vec<_>>())
+        .collect::<Vec<_>>();
+    let width = grid[0].len();
+    let height = grid.len();
 
-        let mut digits = Vec::new();
-        let mut start_x = 0;
-        let mut start_y = 0;
-        for y in 0..grid.len() {
-            for x in 0..grid[0].len() {
-                if grid[y][x].is_ascii_digit() {
-                    if grid[y][x] == '0' {
-                        start_x = x;
-                        start_y = y;
-                    }
-                    digits.push(grid[y][x]);
+    let mut digits = Vec::new();
+    let mut zero_index = 0;
+    for (y, row) in grid.iter().enumerate() {
+        for (x, cell) in row.iter().enumerate() {
+            if cell.is_ascii_digit() {
+                if *cell == b'0' {
+                    zero_index = digits.len();
                 }
+                digits.push((x, y));
             }
         }
+    }
 
-        let mut seen = HashSet::new();
-        let mut queue = BinaryHeap::new();
-        let initial = State {
-            steps: 0,
-            x: start_x as i32,
-            y: start_y as i32,
-            digits_found: BTreeSet::from(['0']),
-        };
-        let initial_key = key(&initial);
-        seen.insert(initial_key);
-        queue.push(Reverse(initial));
+    // Make sure '0' is the first element. This is necessary for our
+    // implementation of the Held–Karp algorithm (see find() function)
+    digits.swap(0, zero_index);
 
-        while !queue.is_empty() {
-            let s = queue.pop().unwrap().0;
+    // Perform multiple BFSs to get the distances between all pairs of digits.
+    // Minor performance optimization: since we always store the distance in
+    // both directions, we can skip the last digit.
+    let mut distances = vec![vec![0; digits.len()]; digits.len()];
+    let mut queue = VecDeque::new();
+    let mut seen = vec![vec![false; width]; height];
+    for (di, &d) in digits.iter().enumerate().take(digits.len() - 1) {
+        seen.iter_mut().for_each(|row| row.fill(false));
 
-            if s.digits_found.len() == digits.len()
-                && (part1 || (s.x as usize == start_x && s.y as usize == start_y))
-            {
-                println!("{}", s.steps);
-                break;
+        queue.push_back((d.0, d.1, 0));
+        seen[d.1][d.0] = true;
+
+        while let Some((x, y, steps)) = queue.pop_front() {
+            if grid[y][x].is_ascii_digit() {
+                let oi = digits.iter().position(|o| *o == (x, y)).unwrap();
+                distances[di][oi] = steps;
+                distances[oi][di] = steps;
             }
-
             for dir in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
-                let nx = s.x + dir.0;
-                let ny = s.y + dir.1;
-                let c = grid[ny as usize][nx as usize];
-                if c != '#' {
-                    let mut ndf = s.digits_found.clone();
-                    if c.is_ascii_digit() && !ndf.contains(&c) {
-                        ndf.insert(c);
-                    }
-                    let ns = State {
-                        steps: s.steps + 1,
-                        x: nx,
-                        y: ny,
-                        digits_found: ndf,
-                    };
-                    let k = key(&ns);
-                    if !seen.contains(&k) {
-                        seen.insert(k);
-                        queue.push(Reverse(ns));
-                    }
+                let nx = x.checked_add_signed(dir.0).unwrap();
+                let ny = y.checked_add_signed(dir.1).unwrap();
+                if grid[ny][nx] != b'#' && !seen[ny][nx] {
+                    seen[ny][nx] = true;
+                    queue.push_back((nx, ny, steps + 1));
                 }
             }
         }
     }
+
+    // Perform Held–Karp algorithm to find the shortest Hamiltonian cycle. Also
+    // return the shortest path starting at the element at index 0 (our digit
+    // '0', see above) and visiting all other digits.
+    let (total1, total2) = held_karp(&distances);
+    println!("{total1}");
+    println!("{total2}");
 }
