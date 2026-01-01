@@ -1,22 +1,21 @@
 use std::fs;
 
 fn main() {
-    for part1 in [true, false] {
-        let input = fs::read_to_string("input.txt").expect("Could not read file");
-        let s = input.trim().chars().collect::<Vec<_>>();
+    let input = fs::read_to_string("input.txt").expect("Could not read file");
+    let s = input.trim().bytes().collect::<Vec<_>>();
 
-        let mut sum = 0;
-        for i in 0..s.len() {
-            let n = if part1 {
-                (i + 1) % s.len()
-            } else {
-                (i + s.len() / 2) % s.len()
-            };
-            if s[i].is_ascii_digit() && s[i] == s[n] {
-                sum += s[i].to_digit(10).unwrap();
-            }
+    let mut total1 = 0;
+    let mut total2 = 0;
+    for (i, &c) in s.iter().enumerate() {
+        let j1 = (i + 1) % s.len();
+        let j2 = (i + s.len() / 2) % s.len();
+        if c == s[j1] {
+            total1 += (c - b'0') as u64;
         }
-
-        println!("{}", sum);
+        if c == s[j2] {
+            total2 += (c - b'0') as u64;
+        }
     }
+    println!("{total1}");
+    println!("{total2}");
 }
