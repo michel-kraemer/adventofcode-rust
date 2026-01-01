@@ -99,7 +99,6 @@ fn main() {
 
         let mut ip = 0;
         while ip < instructions.len() {
-            // println!("EXEC {:?}", instructions[ip]);
             match instructions[ip] {
                 Instruction::Cpy { input, register } => {
                     if let Input::Register(register) = register {
