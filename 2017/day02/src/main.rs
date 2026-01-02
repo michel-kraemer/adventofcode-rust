@@ -1,36 +1,31 @@
 use std::fs;
 
 fn main() {
-    for part1 in [true, false] {
-        let input = fs::read_to_string("input.txt").expect("Could not read file");
+    let input = fs::read_to_string("input.txt").expect("Could not read file");
 
-        let mut sum = 0;
-        for l in input.lines() {
-            let p = l
-                .split_whitespace()
-                .map(|i| i.parse::<i32>().unwrap())
-                .collect::<Vec<_>>();
+    let mut total1 = 0;
+    let mut total2 = 0;
+    for l in input.lines() {
+        let mut p = l
+            .split_ascii_whitespace()
+            .map(|i| i.parse::<u64>().unwrap())
+            .collect::<Vec<_>>();
 
-            if part1 {
-                let max = p.iter().max().unwrap();
-                let min = p.iter().min().unwrap();
-                sum += max - min;
-            } else {
-                for i in 0..p.len() {
-                    for j in i + 1..p.len() {
-                        let (min, max) = if p[i] > p[j] {
-                            (p[j], p[i])
-                        } else {
-                            (p[i], p[j])
-                        };
-                        if (max / min) as f64 == (max as f64 / min as f64) {
-                            sum += max / min;
-                        }
-                    }
+        // sorting is faster than comparing individual elements against each other
+        p.sort_unstable();
+
+        total1 += p.last().unwrap() - p.first().unwrap();
+
+        'outer: for (i, &a) in p.iter().enumerate() {
+            for &b in p.iter().skip(i + 1) {
+                if b % a == 0 {
+                    total2 += b / a;
+                    break 'outer;
                 }
             }
         }
-
-        println!("{}", sum);
     }
+
+    println!("{total1}");
+    println!("{total2}");
 }
