@@ -10,47 +10,39 @@ fn main() {
     // n * n - 1 * (n - 1)    # lower-left corner
     // n * n - 2 * (n - 1)    # upper-left corner
     // n * n - 3 * (n - 1)    # upper-right corner
-    // we iterate through all rings and check if the number we are looking for
-    // lies on one of the four edges
+    // we first find the right ring and then check which edge the number we are
+    // are looking lies on
     let mut ring = 1;
     let mut n = 3;
-    let total1 = loop {
-        let lower_right = n * n;
-        let lower_left = lower_right - (n - 1);
-        let upper_left = lower_left - (n - 1);
-        let upper_right = upper_left - (n - 1);
-        let prev = (n - 2) * (n - 2) + 1;
-
-        // right edge
-        if (prev..=upper_right).contains(&input) {
-            let steps_x = ring;
-            let steps_y = ((prev - 1 + upper_right) / 2).abs_diff(input);
-            break steps_x + steps_y;
-        }
-
-        // top edge
-        if (upper_right..=upper_left).contains(&input) {
-            let steps_x = ((upper_right + upper_left) / 2).abs_diff(input);
-            let steps_y = ring;
-            break steps_x + steps_y;
-        }
-
-        // left edge
-        if (upper_left..=lower_left).contains(&input) {
-            let steps_x = ring;
-            let steps_y = ((upper_left + lower_left) / 2).abs_diff(input);
-            break steps_x + steps_y;
-        }
-
-        // bottom edge
-        if (lower_left..=lower_right).contains(&input) {
-            let steps_x = ((lower_left + lower_right) / 2).abs_diff(input);
-            let steps_y = ring;
-            break steps_x + steps_y;
-        }
-
+    while n * n < input {
         ring += 1;
         n += 2;
+    }
+    let lower_right = n * n;
+    let lower_left = lower_right - (n - 1);
+    let upper_left = lower_left - (n - 1);
+    let upper_right = upper_left - (n - 1);
+    let prev = (n - 2) * (n - 2) + 1;
+    let total1 = if (prev..=upper_right).contains(&input) {
+        // right edge
+        let steps_x = ring;
+        let steps_y = ((prev - 1 + upper_right) / 2).abs_diff(input);
+        steps_x + steps_y
+    } else if (upper_right..=upper_left).contains(&input) {
+        // top edge
+        let steps_x = ((upper_right + upper_left) / 2).abs_diff(input);
+        let steps_y = ring;
+        steps_x + steps_y
+    } else if (upper_left..=lower_left).contains(&input) {
+        // left edge
+        let steps_x = ring;
+        let steps_y = ((upper_left + lower_left) / 2).abs_diff(input);
+        steps_x + steps_y
+    } else {
+        // bottom edge
+        let steps_x = ((lower_left + lower_right) / 2).abs_diff(input);
+        let steps_y = ring;
+        steps_x + steps_y
     };
     println!("{total1}");
 
