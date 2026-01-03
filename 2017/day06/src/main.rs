@@ -1,39 +1,49 @@
-use std::{collections::HashMap, fs};
+use std::{collections::hash_map::Entry, fs};
+
+use rustc_hash::{FxBuildHasher, FxHashMap};
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
-    let mut banks = input
-        .split_whitespace()
-        .map(|l| l.parse::<i32>().unwrap())
-        .collect::<Vec<_>>();
+
+    // the problem statement says there are exactly 16 banks, so we can use an
+    // array instead of a Vec
+    let mut banks: [u32; 16] = [0; 16];
+
+    input
+        .split_ascii_whitespace()
+        .enumerate()
+        .for_each(|(i, v)| banks[i] = v.parse().unwrap());
 
     let mut steps = 0;
-    let cycle_len;
-    let mut seen = HashMap::new();
+    let mut seen = FxHashMap::with_capacity_and_hasher(1 << 14, FxBuildHasher);
 
-    loop {
-        if seen.contains_key(&banks) {
-            cycle_len = steps - seen[&banks];
-            break;
+    let cycle_len = loop {
+        let entry = seen.entry(banks);
+        if let Entry::Occupied(e) = entry {
+            break steps - e.get();
         }
-        seen.insert(banks.clone(), steps);
+        entry.insert_entry(steps);
 
-        let mut max = *banks.iter().max().unwrap();
-        let i = banks.iter().position(|&v| v == max).unwrap();
+        let mut maxi = 0;
+        let mut max = 0;
+        for (i, &b) in banks.iter().enumerate() {
+            if b > max {
+                max = b;
+                maxi = i;
+            }
+        }
 
-        banks[i] = 0;
-
-        let mut j = 0;
+        banks[maxi] = 0;
+        let mut j = (maxi + 1) % banks.len();
         while max > 0 {
-            let k = (i + j + 1) % banks.len();
-            banks[k] += 1;
+            banks[j] += 1;
             max -= 1;
-            j += 1;
+            j = (j + 1) % banks.len();
         }
 
         steps += 1;
-    }
+    };
 
-    println!("{}", steps);
-    println!("{}", cycle_len);
+    println!("{steps}");
+    println!("{cycle_len}");
 }
