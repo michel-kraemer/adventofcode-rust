@@ -1,81 +1,120 @@
-use std::{collections::HashMap, fs};
+use std::{collections::hash_map::Entry, fs};
 
-enum Weight {
-    Is(usize),
-    ShouldBe(usize),
+use rustc_hash::{FxBuildHasher, FxHashMap};
+
+struct Node<'a> {
+    weight: u64,
+    children: Vec<&'a str>,
+    is_root: bool,
 }
 
-fn find_weight(
-    tree: &HashMap<&str, Vec<&str>>,
-    root: &str,
-    weights: &HashMap<&str, usize>,
-) -> Weight {
-    let mut balanced_weights = Vec::new();
+enum Weight {
+    /// A node's own weight and the sum of its weight and its children
+    Is(u64, u64),
+
+    /// The expected weight of a node to balance the tree
+    ShouldBe(u64),
+}
+
+/// Find the weight of the node with the given `name`. Either return
+/// [Weight::Is] with the node's own weight and the sum of its weight and its
+/// children, or return [Weight::ShouldBe] if the node is only node with the
+/// wrong weight and its actual value should be something different.
+fn find_weight(name: &str, tree: &FxHashMap<&str, Node>) -> Weight {
+    let node = &tree[name];
     let mut sum = 0;
-    for c in &tree[root] {
-        let cw = find_weight(tree, c, weights);
-        match cw {
-            Weight::ShouldBe(_) => return cw,
-            Weight::Is(w) => {
-                balanced_weights.push((w, c));
-                sum += w;
+    let mut wa = 0;
+    let mut wb = 0;
+    let mut wa_recursive = 0;
+    let mut wb_recursive = 0;
+
+    // Iterate through all children, compute their weights. If there is a node
+    // whose weight differs from its siblings, wa_recursive and wb_recursive
+    // will both be non-zero and will have different values.
+    for &c in &node.children {
+        match find_weight(c, tree) {
+            s @ Weight::ShouldBe(_) => return s,
+            Weight::Is(cw, cw_recursive) => {
+                if wa_recursive == 0 {
+                    wa = cw;
+                    wa_recursive = cw_recursive;
+                } else if cw_recursive != wa_recursive {
+                    wb = cw;
+                    wb_recursive = cw_recursive;
+                }
+                sum += cw_recursive;
             }
         }
     }
 
-    if !balanced_weights.is_empty() {
-        balanced_weights.sort();
-        if balanced_weights[0].0 != balanced_weights[1].0 {
-            let diff = balanced_weights[1].0 - balanced_weights[0].0;
-            let cw = weights[balanced_weights[0].1];
-            return Weight::ShouldBe(cw + diff);
-        } else if balanced_weights[balanced_weights.len() - 2].0
-            != balanced_weights[balanced_weights.len() - 1].0
-        {
-            let diff = balanced_weights[balanced_weights.len() - 1].0
-                - balanced_weights[balanced_weights.len() - 2].0;
-            let cw = weights[balanced_weights[balanced_weights.len() - 1].1];
-            return Weight::ShouldBe(cw - diff);
-        }
+    if wb != 0 {
+        // determine which weight is the incorrect one
+        return if (node.children.len() as u64 - 1) * wa_recursive + wb_recursive == sum {
+            // wb is the wrong weight
+            Weight::ShouldBe(
+                wb.checked_add_signed(wa_recursive as i64 - wb_recursive as i64)
+                    .unwrap(),
+            )
+        } else {
+            // wa is the wrong weight
+            Weight::ShouldBe(
+                wa.checked_add_signed(wb_recursive as i64 - wa_recursive as i64)
+                    .unwrap(),
+            )
+        };
     }
 
-    Weight::Is(weights[root] + sum)
+    Weight::Is(node.weight, node.weight + sum)
 }
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
 
-    let mut tree: HashMap<&str, Vec<&str>> = HashMap::new();
-    let mut reverse_tree: HashMap<&str, Vec<&str>> = HashMap::new();
-    let mut weights: HashMap<&str, usize> = HashMap::new();
-
-    input.lines().for_each(|l| {
-        let p = l.split(" -> ").collect::<Vec<_>>();
-
-        let (name, weight) = p[0].split_once(' ').unwrap();
-        let weight = weight[1..weight.len() - 1].parse::<usize>().unwrap();
-
-        let dests = if p.len() == 1 {
-            vec![]
+    // parse input and build tree
+    let mut tree: FxHashMap<&str, Node> = FxHashMap::with_capacity_and_hasher(2048, FxBuildHasher);
+    for l in input.lines() {
+        let (from, children) = if let Some((from, to)) = l.split_once(" -> ") {
+            let mut children = Vec::new();
+            for c in to.split(", ") {
+                tree.entry(c)
+                    .and_modify(|n| n.is_root = false)
+                    .or_insert_with(|| Node {
+                        weight: 0,
+                        children: Vec::new(),
+                        is_root: false,
+                    });
+                children.push(c);
+            }
+            (from, children)
         } else {
-            p[1].split(", ").collect::<Vec<_>>()
+            (l, Vec::new())
         };
 
-        reverse_tree.entry(name).or_insert_with(Default::default);
-        for d in &dests {
-            reverse_tree.entry(d).or_default().push(name);
+        let (name, weight) = from.split_once(' ').unwrap();
+        let weight = weight[1..weight.len() - 1].parse::<u64>().unwrap();
+
+        let e = tree.entry(name);
+        if let Entry::Occupied(mut e) = e {
+            let n = e.get_mut();
+            n.weight = weight;
+            n.children = children;
+        } else {
+            e.insert_entry(Node {
+                weight,
+                children,
+                is_root: true,
+            });
         }
+    }
 
-        tree.insert(name, dests);
-        weights.insert(name, weight);
-    });
-
-    let root = reverse_tree.into_iter().find(|p| p.1.is_empty()).unwrap().0;
+    let root = tree.iter().find(|(_, n)| n.is_root).unwrap().0;
 
     // part 1
-    println!("{}", root);
+    println!("{root}");
 
     // part 2
-    let Weight::ShouldBe(r) = find_weight(&tree, root, &weights) else { panic!(); };
-    println!("{}", r);
+    let Weight::ShouldBe(r) = find_weight(root, &tree) else {
+        unreachable!();
+    };
+    println!("{r}");
 }
