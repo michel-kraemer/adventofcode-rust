@@ -42,5 +42,5 @@ fn main() {
     }
 
     println!("{}", (i.abs() + j.abs() + k.abs()) / 2);
-    println!("{}", max);
+    println!("{max}");
 }
