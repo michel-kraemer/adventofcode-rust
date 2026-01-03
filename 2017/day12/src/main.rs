@@ -1,58 +1,63 @@
-use std::{
-    collections::{HashMap, HashSet, VecDeque},
-    fs,
-};
+use std::fs;
 
-fn get_group<'a>(pipes: &HashMap<&'a str, HashSet<&'a str>>, start: &str) -> HashSet<&'a str> {
-    let mut queue = VecDeque::new();
-    queue.push_back(start);
-    let mut seen = HashSet::new();
+use rustc_hash::{FxBuildHasher, FxHashSet};
 
-    while !queue.is_empty() {
-        let n = queue.pop_front().unwrap();
-        let ds = &pipes[n];
-        for d in ds {
-            if !seen.contains(d) {
-                seen.insert(*d);
-                queue.push_back(*d);
-            }
-        }
+struct Node {
+    parent: usize,
+    size: usize,
+}
+
+fn find(x: usize, nodes: &mut [Node]) -> usize {
+    if nodes[x].parent != x {
+        nodes[x].parent = find(nodes[x].parent, nodes);
+        return nodes[x].parent;
+    }
+    x
+}
+
+fn union(mut x: usize, mut y: usize, nodes: &mut [Node]) {
+    x = find(x, nodes);
+    y = find(y, nodes);
+
+    if x == y {
+        return;
     }
 
-    seen
+    if nodes[x].size < nodes[y].size {
+        (x, y) = (y, x);
+    }
+
+    nodes[y].parent = x;
+    nodes[x].size += nodes[y].size;
 }
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
 
-    let mut pipes: HashMap<&str, HashSet<&str>> = HashMap::new();
+    let (mut nodes, lines): (Vec<Node>, Vec<&str>) = input
+        .lines()
+        .enumerate()
+        .map(|(i, l)| (Node { parent: i, size: 1 }, l))
+        .unzip();
 
-    for l in input.lines() {
-        let (src, dsts) = l.split_once(" <-> ").unwrap();
-        let dsts = dsts.split(", ").collect::<Vec<_>>();
-        for d in dsts {
-            pipes.entry(src).or_default().insert(d);
-            pipes.entry(d).or_default().insert(src);
+    for l in lines {
+        let (from, to) = l.split_once(" <-> ").unwrap();
+        let from = from.parse::<usize>().unwrap();
+        for t in to.split(", ").map(|t| t.parse::<usize>().unwrap()) {
+            union(from, t, &mut nodes);
         }
     }
-
-    let mut zero = get_group(&pipes, "0");
 
     // part 1
-    println!("{}", zero.len());
-
-    let mut groups = 1;
-    loop {
-        for z in &zero {
-            pipes.remove(z);
-        }
-        if pipes.is_empty() {
-            break;
-        }
-        groups += 1;
-        zero = get_group(&pipes, pipes.iter().next().unwrap().0);
-    }
+    let zero = find(0, &mut nodes);
+    println!("{}", nodes[zero].size);
 
     // part 2
-    println!("{}", groups);
+    let mut groups: FxHashSet<usize> =
+        FxHashSet::with_capacity_and_hasher(nodes.len(), FxBuildHasher);
+    for i in 0..nodes.len() {
+        let parent = find(i, &mut nodes);
+        groups.insert(parent);
+    }
+    println!("{}", groups.len());
 }
