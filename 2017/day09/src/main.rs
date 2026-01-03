@@ -17,16 +17,18 @@ fn main() {
                 level -= 1;
             }
             b'<' => {
-                while i < input.len() && c != b'>' {
+                while i < input.len() {
                     c = input[i];
                     if c == b'!' {
                         i += 1;
                     } else {
                         non_canceled += 1;
                     }
+                    if c == b'>' {
+                        break;
+                    }
                     i += 1;
                 }
-                i -= 1; // don't skip beyond '>'
                 non_canceled -= 2; // don't count '<' and '>'
             }
             _ => {}
