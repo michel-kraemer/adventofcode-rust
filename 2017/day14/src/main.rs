@@ -1,15 +1,29 @@
 use std::{collections::VecDeque, fs};
 
-fn hash(s: &str) -> String {
-    let mut lenghts = s.chars().map(|c| c as usize).collect::<Vec<_>>();
-    lenghts.extend(&[17, 31, 73, 47, 23]);
+fn hash(input: &[usize], rowi: usize, row: &mut [bool; 128]) {
+    let mut lengths = input.to_vec();
+    lengths.push(b'-' as usize);
+
+    let digits = if rowi > 0 {
+        (rowi.ilog10() + 1) as usize
+    } else {
+        1
+    };
+    let ll = lengths.len() + digits;
+    lengths.resize(ll, b'0' as usize);
+    let mut n = rowi;
+    for j in 0..digits {
+        lengths[ll - 1 - j] = n % 10 + b'0' as usize;
+        n /= 10;
+    }
+    lengths.extend(&[17, 31, 73, 47, 23]);
 
     let mut h = Vec::from_iter(0u8..=255u8);
     let mut i = 0;
     let mut skip = 0;
 
     for _ in 0..64 {
-        for l in &lenghts {
+        for l in &lengths {
             for j in 0..l / 2 {
                 let j1 = (i + j) % h.len();
                 let j2 = (i + (l - j - 1)) % h.len();
@@ -20,48 +34,47 @@ fn hash(s: &str) -> String {
         }
     }
 
-    h.chunks(16)
-        .map(|c| c.iter().copied().reduce(|a, b| a ^ b).unwrap())
-        .map(|b| format!("{:02x}", b))
-        .collect::<String>()
+    let mut j = 0;
+    for c in h.chunks(16) {
+        let b = c.iter().copied().reduce(|a, b| a ^ b).unwrap();
+        for k in (0..8).rev() {
+            row[j] = b & (1 << k) > 0;
+            j += 1;
+        }
+    }
 }
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
     let input = input.trim();
 
-    let mut grid = Vec::new();
+    let mut grid = [[false; 128]; 128];
 
-    for i in 0..128 {
-        let s = format!("{}-{}", input, i);
-        let h = hash(&s);
-        let mut r = Vec::new();
-        for c in h.chars() {
-            let v = c.to_digit(16).unwrap();
-            r.push(v & 8 == 8);
-            r.push(v & 4 == 4);
-            r.push(v & 2 == 2);
-            r.push(v & 1 == 1);
-        }
-        grid.push(r);
+    let ib = input.bytes().map(|c| c as usize).collect::<Vec<_>>();
+    for (i, row) in grid.iter_mut().enumerate() {
+        hash(&ib, i, row);
     }
 
     // part 1
-    let c = grid.iter().flatten().filter(|b| **b).count();
-    println!("{}", c);
+    println!("{}", grid.iter().flatten().copied().filter(|b| *b).count());
 
     // part 2
     let mut groups = 0;
+    let mut y = 0;
+    let mut x = 0;
     loop {
-        // find any start point
+        // find next start point
         let mut s = None;
-        for y in 0..grid.len() {
-            for x in 0..grid[0].len() {
+        'outer: while y < 128 {
+            while x < 128 {
                 if grid[y][x] {
                     s = Some((x, y));
-                    break;
+                    break 'outer;
                 }
+                x += 1;
             }
+            y += 1;
+            x = 0;
         }
 
         if let Some(s) = s {
@@ -92,5 +105,5 @@ fn main() {
         }
     }
 
-    println!("{}", groups);
+    println!("{groups}");
 }
