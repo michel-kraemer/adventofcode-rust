@@ -1,72 +1,87 @@
-use std::{collections::HashMap, fs};
+use std::fs;
 
-enum Move {
-    S(usize),
-    X(usize, usize),
-    P(char, char),
+/// Multiply `a` with `b` and store the result in `dst`
+fn mul(a: &[usize; 16], b: &[usize; 16], dst: &mut [usize; 16]) {
+    for (d, &s) in b.iter().enumerate() {
+        dst[d] = a[s];
+    }
+}
+
+/// Binary exponentiation of `src`. Store the result in `dst`
+fn pow(src: &[usize; 16], mut e: usize, dst: &mut [usize; 16]) {
+    assert!(e > 0);
+    e -= 1;
+    let mut a = *src;
+    let mut tmp = *src;
+    dst.copy_from_slice(src);
+    while e > 0 {
+        if e & 1 > 0 {
+            mul(dst, &a, &mut tmp);
+            dst.copy_from_slice(&tmp);
+        }
+        mul(&a, &a, &mut tmp);
+        a.copy_from_slice(&tmp);
+        e >>= 1;
+    }
+}
+
+fn to_order(moves: &[usize; 16], renames: &[usize; 16]) -> String {
+    let mut a: [usize; 16] = [0; 16];
+    for (i, m) in moves.iter().enumerate() {
+        a[*m] = i;
+    }
+
+    let mut b: [char; 16] = [' '; 16];
+    for (i, r) in renames.iter().enumerate() {
+        let j = a.iter().position(|p| *p == i).unwrap();
+        b[j] = ((*r as u8) + b'a') as char;
+    }
+
+    b.iter().collect()
 }
 
 fn main() {
-    for part1 in [true, false] {
-        let input = fs::read_to_string("input.txt").expect("Could not read file");
-        let moves = input
-            .trim()
-            .split(',')
-            .map(|m| {
-                if let Some(m) = m.strip_prefix('s') {
-                    Move::S(m.parse().unwrap())
-                } else if let Some(m) = m.strip_prefix('x') {
-                    let (a, b) = m.split_once('/').unwrap();
-                    Move::X(a.parse().unwrap(), b.parse().unwrap())
-                } else if let Some(m) = m.strip_prefix('p') {
-                    let mut c = m.chars();
-                    let a = c.next().unwrap();
-                    let b = c.nth(1).unwrap();
-                    Move::P(a, b)
-                } else {
-                    panic!()
-                }
-            })
-            .collect::<Vec<_>>();
+    let input = fs::read_to_string("input.txt").expect("Could not read file");
 
-        let mut programs = (b'a'..=b'p').map(|b| b as char).collect::<Vec<_>>();
+    // Perform instructions once but differentiate between moves and renames.
+    // This allows us to use binary exponentiation later to get the order of the
+    // programs after 1 billion dances.
+    let mut programs: [usize; 16] = std::array::from_fn(|i| i);
+    let mut swaps: [usize; 16] = std::array::from_fn(|i| i);
 
-        let mut seen = HashMap::new();
-        seen.insert(programs.clone(), 0);
-
-        let result;
-        let mut round = 1;
-        loop {
-            for m in &moves {
-                match m {
-                    Move::S(len) => {
-                        programs.rotate_right(*len);
-                    }
-                    Move::X(a, b) => {
-                        programs.swap(*a, *b);
-                    }
-                    Move::P(a, b) => {
-                        let a = programs.iter().position(|p| p == a).unwrap();
-                        let b = programs.iter().position(|p| p == b).unwrap();
-                        programs.swap(a, b);
-                    }
-                }
-            }
-
-            if part1 {
-                result = programs;
-                break;
-            } else if let Some(cycle_start) = seen.get(&programs) {
-                let cycle_len = round - cycle_start;
-                round = (1_000_000_000 - cycle_start) % cycle_len + cycle_start;
-                result = seen.into_iter().find(|(_, r)| *r == round).unwrap().0;
-                break;
-            } else {
-                seen.insert(programs.clone(), round);
-                round += 1;
-            }
+    for instruction in input.trim().split(',') {
+        if let Some(m) = instruction.strip_prefix('s') {
+            programs.rotate_right(m.parse().unwrap());
+        } else if let Some(m) = instruction.strip_prefix('x') {
+            let (a, b) = m.split_once('/').unwrap();
+            programs.swap(a.parse().unwrap(), b.parse().unwrap());
+        } else if let Some(m) = instruction.strip_prefix('p') {
+            let mut c = m.bytes();
+            let a = c.next().unwrap();
+            let b = c.nth(1).unwrap();
+            swaps.swap((a - b'a') as usize, (b - b'a') as usize);
+        } else {
+            panic!("Unknown instruction: {instruction}");
         }
-
-        println!("{}", String::from_iter(result));
     }
+
+    let mut moves = [0; 16];
+    for (i, p) in programs.iter().enumerate() {
+        moves[*p] = i;
+    }
+    let mut renames = [0; 16];
+    for (i, s) in swaps.iter().enumerate() {
+        renames[*s] = i;
+    }
+
+    // part 1
+    println!("{}", to_order(&moves, &renames));
+
+    // part 2
+    let mut moves2 = [0; 16];
+    pow(&moves, 1_000_000_000, &mut moves2);
+    let mut renames2 = [0; 16];
+    pow(&renames, 1_000_000_000, &mut renames2);
+
+    println!("{}", to_order(&moves2, &renames2));
 }
