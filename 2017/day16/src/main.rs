@@ -49,12 +49,16 @@ fn main() {
     let mut programs: [usize; 16] = std::array::from_fn(|i| i);
     let mut swaps: [usize; 16] = std::array::from_fn(|i| i);
 
+    let mut offset = 0;
     for instruction in input.trim().split(',') {
         if let Some(m) = instruction.strip_prefix('s') {
-            programs.rotate_right(m.parse().unwrap());
+            offset = (offset + m.parse::<isize>().unwrap()) % 16;
         } else if let Some(m) = instruction.strip_prefix('x') {
             let (a, b) = m.split_once('/').unwrap();
-            programs.swap(a.parse().unwrap(), b.parse().unwrap());
+            programs.swap(
+                (a.parse::<isize>().unwrap() - offset).rem_euclid(16) as usize,
+                (b.parse::<isize>().unwrap() - offset).rem_euclid(16) as usize,
+            );
         } else if let Some(m) = instruction.strip_prefix('p') {
             let mut c = m.bytes();
             let a = c.next().unwrap();
@@ -64,6 +68,8 @@ fn main() {
             panic!("Unknown instruction: {instruction}");
         }
     }
+
+    programs.rotate_right(offset as usize);
 
     let mut moves = [0; 16];
     for (i, p) in programs.iter().enumerate() {
