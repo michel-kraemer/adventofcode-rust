@@ -60,7 +60,7 @@ fn main() {
     let mut len = 1;
     while len < 50_000_000 {
         // jump ahead to just before the end of the buffer
-        let add = (len - i - 1) / steps;
+        let add = (len - i) / (steps + 1);
         if add > 0 {
             i += (steps + 1) * add;
             len += add;
