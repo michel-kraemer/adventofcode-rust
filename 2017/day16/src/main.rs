@@ -52,12 +52,12 @@ fn main() {
     let mut offset = 0;
     for instruction in input.trim().split(',') {
         if let Some(m) = instruction.strip_prefix('s') {
-            offset = (offset + m.parse::<isize>().unwrap()) % 16;
+            offset = (offset + m.parse::<usize>().unwrap()) % 16;
         } else if let Some(m) = instruction.strip_prefix('x') {
             let (a, b) = m.split_once('/').unwrap();
             programs.swap(
-                (a.parse::<isize>().unwrap() - offset).rem_euclid(16) as usize,
-                (b.parse::<isize>().unwrap() - offset).rem_euclid(16) as usize,
+                (a.parse::<usize>().unwrap() + 16 - offset) % 16,
+                (b.parse::<usize>().unwrap() + 16 - offset) % 16,
             );
         } else if let Some(m) = instruction.strip_prefix('p') {
             let mut c = m.bytes();
@@ -69,7 +69,7 @@ fn main() {
         }
     }
 
-    programs.rotate_right(offset as usize);
+    programs.rotate_right(offset);
 
     let mut moves = [0; 16];
     for (i, p) in programs.iter().enumerate() {
