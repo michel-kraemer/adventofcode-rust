@@ -83,16 +83,22 @@ impl Screen {
         }
         self.last_update = Some(Instant::now());
 
+        let mut last_cursor_x = usize::MAX;
+        let mut last_cursor_y = usize::MAX;
         let mut stdout = self.stdout.lock();
         for y in 0..self.height {
             for x in 0..self.width {
                 let c = new_grid[y * self.width + x];
                 if c != self.last_grid[y * self.width + x].0 {
                     self.last_grid[y * self.width + x].0 = c;
-                    stdout
-                        .execute(cursor::MoveTo(self.pos.0 + x as u16, self.pos.1 + y as u16))
-                        .unwrap();
+                    if last_cursor_x != x || last_cursor_y != y {
+                        stdout
+                            .execute(cursor::MoveTo(self.pos.0 + x as u16, self.pos.1 + y as u16))
+                            .unwrap();
+                    }
                     stdout.execute(style::Print(c)).unwrap();
+                    last_cursor_y = y;
+                    last_cursor_x = x + 1;
                 }
             }
         }
@@ -108,6 +114,9 @@ impl Screen {
         }
         self.last_update = Some(Instant::now());
 
+        let mut last_color = Color::Grey;
+        let mut last_cursor_x = usize::MAX;
+        let mut last_cursor_y = usize::MAX;
         let mut stdout = self.stdout.lock();
         for y in 0..self.height {
             for x in 0..self.width {
@@ -115,15 +124,23 @@ impl Screen {
                 let c = (new_grid[y * self.width + x].0, Color::Rgb { r, g, b });
                 if c != self.last_grid[y * self.width + x] {
                     self.last_grid[y * self.width + x] = c;
-                    stdout.execute(SetForegroundColor(c.1)).unwrap();
-                    stdout
-                        .execute(cursor::MoveTo(self.pos.0 + x as u16, self.pos.1 + y as u16))
-                        .unwrap();
+                    if c.1 != last_color {
+                        stdout.execute(SetForegroundColor(c.1)).unwrap();
+                        last_color = c.1;
+                    }
+                    if last_cursor_x != x || last_cursor_y != y {
+                        stdout
+                            .execute(cursor::MoveTo(self.pos.0 + x as u16, self.pos.1 + y as u16))
+                            .unwrap();
+                    }
                     stdout.execute(style::Print(c.0)).unwrap();
-                    stdout.execute(SetForegroundColor(Color::Grey)).unwrap();
+                    last_cursor_y = y;
+                    last_cursor_x = x + 1;
                 }
             }
         }
+
+        stdout.execute(SetForegroundColor(Color::Grey)).unwrap();
     }
 
     /// Finish visualization and reset terminal
