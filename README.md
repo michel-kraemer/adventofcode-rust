@@ -50,7 +50,7 @@ I've created terminal visualizations of some puzzles for fun:
       <a href="2015/day18/src/main.rs">2015 - Day 18: Like a GIF For Your Yard</a>
     </td>
     <td align="center">
-      <a href="2016/day08/aoc_2016_day08_mini.gif"><img src="2016/day08/aoc_2016_day08_mini.gif" width="200px" /></a><br />
+      <a href="2016/day08/aoc_2016_day08_mini.gif"><img src="2016/day08/aoc_2016_day08_mini.webp" width="200px" /></a><br />
       <a href="2016/day08/src/main.rs">2016 - Day 8: Two-Factor Authentication</a>
     </td>
   </tr>
