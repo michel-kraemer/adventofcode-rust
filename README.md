@@ -56,7 +56,7 @@ I've created terminal visualizations of some puzzles for fun:
   </tr>
   <tr>
     <td align="center">
-      <a href="2016/day22/aoc_2016_day22.gif"><img src="2016/day22/aoc_2016_day22_mini.gif" height="200px" /></a><br />
+      <a href="2016/day22/aoc_2016_day22.gif"><img src="2016/day22/aoc_2016_day22_mini.webp" height="200px" /></a><br />
       <a href="2016/day22/src/main.rs">2016 - Day 22: Grid Computing</a>
     </td>
     <td align="center">
