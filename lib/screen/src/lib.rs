@@ -17,7 +17,9 @@ pub struct Screen {
     last_grid: Vec<(char, Color)>,
     stdout: Stdout,
     pos: (u16, u16),
-    last_update: Option<Instant>,
+    first_render: Option<Instant>,
+    frames_rendered: u32,
+    frames_delayed: u32,
     finished: bool,
 }
 
@@ -68,20 +70,44 @@ impl Screen {
             last_grid,
             stdout,
             pos: cursor::position().unwrap(),
-            last_update: None,
+            first_render: None,
+            frames_rendered: 0,
+            frames_delayed: 0,
             finished: false,
         }
     }
 
+    /// Try to sleep between frames to maintain fps. Return `false` if rendering
+    /// should be skipped.
+    fn try_sleep(&mut self) -> bool {
+        let mut result = true;
+
+        if let Some(first_render) = self.first_render {
+            let elapsed = first_render.elapsed();
+            if self.time_per_frame * self.frames_rendered > elapsed {
+                thread::sleep(self.time_per_frame * self.frames_rendered - elapsed);
+                self.frames_delayed = 0;
+            } else {
+                self.frames_delayed += 1;
+                if self.frames_delayed > 5 {
+                    // we're way too late, better skip this frame to keep up
+                    self.frames_delayed -= 2;
+                    result = false;
+                }
+            }
+        } else {
+            self.first_render = Some(Instant::now());
+        }
+        self.frames_rendered += 1;
+
+        result
+    }
+
     /// Update the visualization with a new grid
     pub fn update(&mut self, new_grid: &[char]) {
-        if let Some(last_update) = self.last_update {
-            let elapsed = last_update.elapsed();
-            if self.time_per_frame > elapsed {
-                thread::sleep(self.time_per_frame - elapsed);
-            }
+        if !self.try_sleep() {
+            return;
         }
-        self.last_update = Some(Instant::now());
 
         let mut last_cursor_x = usize::MAX;
         let mut last_cursor_y = usize::MAX;
@@ -106,13 +132,9 @@ impl Screen {
 
     /// Update the visualization with a new colored grid
     pub fn update_with_colors(&mut self, new_grid: &[(char, (u8, u8, u8))]) {
-        if let Some(last_update) = self.last_update {
-            let elapsed = last_update.elapsed();
-            if self.time_per_frame > elapsed {
-                thread::sleep(self.time_per_frame - elapsed);
-            }
+        if !self.try_sleep() {
+            return;
         }
-        self.last_update = Some(Instant::now());
 
         let mut last_color = Color::Grey;
         let mut last_cursor_x = usize::MAX;
