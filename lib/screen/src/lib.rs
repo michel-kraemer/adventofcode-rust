@@ -1,25 +1,23 @@
 use std::{
     io::{Stdout, Write, stdout},
-    thread,
-    time::{Duration, Instant},
+    thread::{self, JoinHandle},
+    time::Duration,
 };
 
-use crossterm::{
-    ExecutableCommand, cursor,
-    style::{self, Color, SetForegroundColor},
-    terminal,
-};
+use crossbeam_channel::{Sender, bounded};
+use crossterm::{ExecutableCommand, cursor, terminal};
+
+use crate::renderer::{RenderMessage, Renderer};
+
+mod renderer;
 
 pub struct Screen {
     width: usize,
     height: usize,
-    time_per_frame: Duration,
-    last_grid: Vec<(char, Color)>,
     stdout: Stdout,
     pos: (u16, u16),
-    first_render: Option<Instant>,
-    frames_rendered: u32,
-    frames_delayed: u32,
+    thread_handle: Option<JoinHandle<()>>,
+    sender: Option<Sender<RenderMessage>>,
     finished: bool,
 }
 
@@ -57,112 +55,47 @@ impl Screen {
             cursor::position().unwrap().1 - height as u16,
         ))
         .unwrap();
+        let pos = cursor::position().unwrap();
 
         // hide cursor
         lock.execute(cursor::Hide).unwrap();
 
-        let last_grid = vec![(' ', Color::Grey); width * height];
+        // start render loop
+        let (sender, receiver) = bounded::<RenderMessage>(10);
+        let thread_handle = thread::spawn(move || {
+            let mut thread = Renderer::new(width, height, Duration::from_secs(1) / fps, pos);
+            for msg in &receiver {
+                thread.render(msg, receiver.len());
+            }
+        });
 
         Self {
             width,
             height,
-            time_per_frame: Duration::from_secs(1) / fps,
-            last_grid,
             stdout,
-            pos: cursor::position().unwrap(),
-            first_render: None,
-            frames_rendered: 0,
-            frames_delayed: 0,
+            pos,
+            thread_handle: Some(thread_handle),
+            sender: Some(sender),
             finished: false,
         }
     }
 
-    /// Try to sleep between frames to maintain fps. Return `false` if rendering
-    /// should be skipped.
-    fn try_sleep(&mut self) -> bool {
-        let mut result = true;
-
-        if let Some(first_render) = self.first_render {
-            let elapsed = first_render.elapsed();
-            if self.time_per_frame * self.frames_rendered > elapsed {
-                thread::sleep(self.time_per_frame * self.frames_rendered - elapsed);
-                self.frames_delayed = 0;
-            } else {
-                self.frames_delayed += 1;
-                if self.frames_delayed > 5 {
-                    // we're way too late, better skip this frame to keep up
-                    self.frames_delayed -= 2;
-                    result = false;
-                }
-            }
-        } else {
-            self.first_render = Some(Instant::now());
-        }
-        self.frames_rendered += 1;
-
-        result
-    }
-
     /// Update the visualization with a new grid
-    pub fn update(&mut self, new_grid: &[char]) {
-        if !self.try_sleep() {
-            return;
-        }
-
-        let mut last_cursor_x = usize::MAX;
-        let mut last_cursor_y = usize::MAX;
-        let mut stdout = self.stdout.lock();
-        for y in 0..self.height {
-            for x in 0..self.width {
-                let c = new_grid[y * self.width + x];
-                if c != self.last_grid[y * self.width + x].0 {
-                    self.last_grid[y * self.width + x].0 = c;
-                    if last_cursor_x != x || last_cursor_y != y {
-                        stdout
-                            .execute(cursor::MoveTo(self.pos.0 + x as u16, self.pos.1 + y as u16))
-                            .unwrap();
-                    }
-                    stdout.execute(style::Print(c)).unwrap();
-                    last_cursor_y = y;
-                    last_cursor_x = x + 1;
-                }
-            }
+    pub fn update(&mut self, new_grid: Vec<char>) {
+        if let Some(sender) = &mut self.sender {
+            sender
+                .send(RenderMessage::Render { new_grid })
+                .expect("Render channel is closed");
         }
     }
 
     /// Update the visualization with a new colored grid
-    pub fn update_with_colors(&mut self, new_grid: &[(char, (u8, u8, u8))]) {
-        if !self.try_sleep() {
-            return;
+    pub fn update_with_colors(&mut self, new_grid: Vec<(char, (u8, u8, u8))>) {
+        if let Some(sender) = &mut self.sender {
+            sender
+                .send(RenderMessage::RenderWithColors { new_grid })
+                .expect("Render channel is closed");
         }
-
-        let mut last_color = Color::Grey;
-        let mut last_cursor_x = usize::MAX;
-        let mut last_cursor_y = usize::MAX;
-        let mut stdout = self.stdout.lock();
-        for y in 0..self.height {
-            for x in 0..self.width {
-                let (r, g, b) = new_grid[y * self.width + x].1;
-                let c = (new_grid[y * self.width + x].0, Color::Rgb { r, g, b });
-                if c != self.last_grid[y * self.width + x] {
-                    self.last_grid[y * self.width + x] = c;
-                    if c.1 != last_color {
-                        stdout.execute(SetForegroundColor(c.1)).unwrap();
-                        last_color = c.1;
-                    }
-                    if last_cursor_x != x || last_cursor_y != y {
-                        stdout
-                            .execute(cursor::MoveTo(self.pos.0 + x as u16, self.pos.1 + y as u16))
-                            .unwrap();
-                    }
-                    stdout.execute(style::Print(c.0)).unwrap();
-                    last_cursor_y = y;
-                    last_cursor_x = x + 1;
-                }
-            }
-        }
-
-        stdout.execute(SetForegroundColor(Color::Grey)).unwrap();
     }
 
     /// Finish visualization and reset terminal
@@ -170,11 +103,19 @@ impl Screen {
         if self.finished {
             return;
         }
+
+        // drop sender and wait for render thread to finish
+        self.sender.take();
+        if let Some(thread_handle) = self.thread_handle.take() {
+            thread_handle.join().expect("Render thread panicked");
+        }
+
         let mut stdout = self.stdout.lock();
         stdout
             .execute(cursor::MoveTo(0, self.pos.1 + self.height as u16 + 1))
             .unwrap();
         stdout.execute(cursor::Show).unwrap();
+
         self.finished = true;
     }
 }
@@ -191,7 +132,6 @@ pub struct WindowedScreen {
     margin: Option<(usize, usize)>,
     last_window_top_left: Option<(usize, usize)>,
     screen: Screen,
-    new_window: Vec<(char, (u8, u8, u8))>,
     forward: bool,
 }
 
@@ -210,7 +150,6 @@ impl WindowedScreen {
                 margin: None,
                 last_window_top_left: None,
                 screen,
-                new_window: Vec::new(),
                 forward: true,
             };
         }
@@ -237,14 +176,12 @@ impl WindowedScreen {
         }
 
         let screen = Screen::new(terminal_cols as usize, terminal_rows as usize, fps);
-        let new_window = vec![(' ', (0, 0, 0)); screen.width * screen.height];
         Self {
             width,
             height,
             margin,
             last_window_top_left: None,
             screen,
-            new_window,
             forward: false,
         }
     }
@@ -319,39 +256,40 @@ impl WindowedScreen {
     }
 
     /// Update the visualization with a new grid
-    pub fn update(&mut self, new_grid: &[char], center: (usize, usize)) {
+    pub fn update(&mut self, new_grid: Vec<char>, center: (usize, usize)) {
         if self.forward {
             self.screen.update(new_grid);
         } else {
+            let mut new_window = vec![' '; self.screen.width * self.screen.height];
             let (min_x, min_y, max_x, max_y) = self.get_window(center);
             for y in min_y..max_y {
                 for x in min_x..max_x {
-                    self.new_window[(y - min_y) * self.screen.width + (x - min_x)].0 =
+                    new_window[(y - min_y) * self.screen.width + (x - min_x)] =
                         new_grid[y * self.width + x];
                 }
             }
-            self.screen
-                .update(&self.new_window.iter().map(|c| c.0).collect::<Vec<_>>());
+            self.screen.update(new_window);
         }
     }
 
     /// Update the visualization with a new colored grid
     pub fn update_with_colors(
         &mut self,
-        new_grid: &[(char, (u8, u8, u8))],
+        new_grid: Vec<(char, (u8, u8, u8))>,
         center: (usize, usize),
     ) {
         if self.forward {
             self.screen.update_with_colors(new_grid);
         } else {
+            let mut new_window = vec![(' ', (0, 0, 0)); self.screen.width * self.screen.height];
             let (min_x, min_y, max_x, max_y) = self.get_window(center);
             for y in min_y..max_y {
                 for x in min_x..max_x {
-                    self.new_window[(y - min_y) * self.screen.width + (x - min_x)] =
+                    new_window[(y - min_y) * self.screen.width + (x - min_x)] =
                         new_grid[y * self.width + x];
                 }
             }
-            self.screen.update_with_colors(&self.new_window);
+            self.screen.update_with_colors(new_window);
         }
     }
 

@@ -110,7 +110,7 @@ fn visualize(grid: &mut [u64; (H + 2) * W], screen: &mut Screen) {
             screen_grid[y * H + x] = c;
         }
     }
-    screen.update(&screen_grid);
+    screen.update(screen_grid);
 }
 
 fn main() {

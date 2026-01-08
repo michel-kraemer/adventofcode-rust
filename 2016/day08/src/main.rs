@@ -37,7 +37,7 @@ fn rotate_down(grid: &mut [[bool; 50]; 6], x: usize, n: usize) {
 
 #[cfg(feature = "visualize")]
 fn visualize_grid(grid: &[[bool; 50]; 6], screen: &mut Screen) {
-    let mut new_grid = [' '; 50 * 6];
+    let mut new_grid = vec![' '; 50 * 6];
     for y in 0..6 {
         for x in 0..50 {
             if grid[y][x] {
@@ -45,7 +45,7 @@ fn visualize_grid(grid: &[[bool; 50]; 6], screen: &mut Screen) {
             }
         }
     }
-    screen.update(&new_grid);
+    screen.update(new_grid);
 }
 
 fn main() {

@@ -204,5 +204,5 @@ fn update_screen(
         }
     }
 
-    screen.update_with_colors(&visualized_grid);
+    screen.update_with_colors(visualized_grid);
 }
