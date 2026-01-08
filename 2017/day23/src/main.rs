@@ -72,31 +72,53 @@ fn to_reg(s: &str) -> usize {
     (s.as_bytes()[0] - b'a') as usize
 }
 
+fn to_value(s: &str) -> Value {
+    if let Ok(v) = s.parse::<i64>() {
+        Value::Const(v)
+    } else {
+        Value::Reg(to_reg(s))
+    }
+}
+
+/// Check if a number is prime. It's not as fast as Miller-Rabin or the like,
+/// but it gets the job done. The code uses a combination of strategies I found
+/// on the Internet to identify composite numbers quickly and to test as few
+/// factors as possible.
+fn is_prime(n: i64) -> bool {
+    if n <= 1 {
+        return false;
+    }
+
+    if n <= 3 {
+        return true;
+    }
+
+    if n % 2 == 0 || n % 3 == 0 {
+        return false;
+    }
+
+    let mut i = 5;
+    while i * i <= n {
+        if n % i == 0 || n % (i + 2) == 0 {
+            return false;
+        }
+        i += 6; // numbers divisible by 2 and 3 don't have to be tested again
+    }
+
+    true
+}
+
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
     let instructions = input
         .lines()
         .map(|l| {
-            let p = l.split(' ').collect::<Vec<_>>();
-            let p1 = if let Ok(v) = p[1].parse::<i64>() {
-                Value::Const(v)
-            } else {
-                Value::Reg(to_reg(p[1]))
-            };
-            let p2 = if p.len() > 2 {
-                Some(if let Ok(v) = p[2].parse::<i64>() {
-                    Value::Const(v)
-                } else {
-                    Value::Reg(to_reg(p[2]))
-                })
-            } else {
-                None
-            };
-            match p[0] {
-                "set" => Instruction::Set(to_reg(p[1]), p2.unwrap()),
-                "sub" => Instruction::Sub(to_reg(p[1]), p2.unwrap()),
-                "mul" => Instruction::Mul(to_reg(p[1]), p2.unwrap()),
-                "jnz" => Instruction::Jnz(p1, p2.unwrap()),
+            let mut p = l.split_ascii_whitespace();
+            match p.next().unwrap() {
+                "set" => Instruction::Set(to_reg(p.next().unwrap()), to_value(p.next().unwrap())),
+                "sub" => Instruction::Sub(to_reg(p.next().unwrap()), to_value(p.next().unwrap())),
+                "mul" => Instruction::Mul(to_reg(p.next().unwrap()), to_value(p.next().unwrap())),
+                "jnz" => Instruction::Jnz(to_value(p.next().unwrap()), to_value(p.next().unwrap())),
                 _ => panic!(),
             }
         })
@@ -105,7 +127,7 @@ fn main() {
     // part 1
     let mut p = Program::new(&instructions);
     let multiplications = p.run();
-    println!("{}", multiplications);
+    println!("{multiplications}");
 
     // part 2 ...
     // first get all instructions dealing with b and c
@@ -124,10 +146,13 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    // assumption: the last instruction should be the one incrementing b
-    let Some(Instruction::Sub(1, step)) = filtered_instructions.iter().last()
-        else { panic!("Last instruction does not decrease register 'b'") };
-    let Value::Const(step) = step else { panic!("Parameter of last instruction is not const") };
+    // assumption: the last instruction should be the one decrementing b
+    let Some(Instruction::Sub(1, step)) = filtered_instructions.iter().last() else {
+        panic!("Last instruction does not decrease register 'b'")
+    };
+    let Value::Const(step) = step else {
+        panic!("Parameter of last instruction is not const")
+    };
     let step = (-step) as usize;
 
     // run filtered instructions (without the last one) to get the values of
@@ -141,9 +166,6 @@ fn main() {
     // to Rust and optimized, so it's not so naive. The code iterates through
     // all values between b and c (with the given step size) and counts how
     // many values are not prime.
-    let non_primes = (b..=c)
-        .step_by(step)
-        .filter(|v| (2i64..((*v as f64).sqrt() + 1.0).floor() as i64).any(|i| v % i == 0))
-        .count();
-    println!("{}", non_primes);
+    let non_primes = (b..=c).step_by(step).filter(|&v| !is_prime(v)).count();
+    println!("{non_primes}");
 }
