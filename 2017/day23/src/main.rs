@@ -80,10 +80,9 @@ fn to_value(s: &str) -> Value {
     }
 }
 
-/// Check if a number is prime. It's not as fast as Miller-Rabin or the like,
-/// but it gets the job done. The code uses a combination of strategies I found
-/// on the Internet to identify composite numbers quickly and to test as few
-/// factors as possible.
+/// Check if a number is prime using [Wheel
+/// factorization](https://en.wikipedia.org/wiki/Wheel_factorization). This test
+/// is not as fast as Miller-Rabin or the like, but it gets the job done.
 fn is_prime(n: i64) -> bool {
     if n <= 1 {
         return false;
