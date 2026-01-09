@@ -20,8 +20,12 @@ challenge.
 
 🤓 *Find clever solutions to complex problems that others might not have found.*
   Some highlights I'm particularly proud of:
+* [Day 25 of 2017](2017/day25/src/main.rs): Fast Turing machine simulation using
+  memoized macro transitions over fixed-size blocks inspired by tape compression
+  and the [linear speedup
+  theorem](https://en.wikipedia.org/wiki/Linear_speedup_theorem).
 * [Day 25 of 2018](2018/day25/src/main.rs): Combining DBSCAN with a spatial
-  index based on Morton indices. Very fast!
+  index based on Morton indices. Very fast and scalable!
 * [Day 21 of 2023](2023/day21/src/main.rs): Applying
   [bit operations](2023/day21/src/bitarray.rs) to simulate the cellular
   automaton, which allowed me to implement a fast and generalized solution
