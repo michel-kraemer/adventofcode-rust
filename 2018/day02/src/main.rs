@@ -1,24 +1,24 @@
-use std::{collections::HashMap, fs};
+use std::fs;
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
     let words = input
         .lines()
-        .map(|l| l.chars().collect::<Vec<_>>())
+        .map(|l| l.bytes().collect::<Vec<_>>())
         .collect::<Vec<_>>();
 
     // part 1
     let mut twos = 0;
     let mut threes = 0;
     for w in &words {
-        let mut counts: HashMap<char, usize> = HashMap::new();
+        let mut counts = [0; 26];
         for &c in w {
-            *counts.entry(c).or_default() += 1;
+            counts[(c - b'a') as usize] += 1;
         }
-        if counts.values().any(|&v| v == 2) {
+        if counts.contains(&2) {
             twos += 1;
         }
-        if counts.values().any(|&v| v == 3) {
+        if counts.contains(&3) {
             threes += 1;
         }
     }
@@ -48,8 +48,14 @@ fn main() {
             if diffs == 1 {
                 println!(
                     "{}{}",
-                    String::from_iter(&w1[..diff_index]),
-                    String::from_iter(&w1[diff_index + 1..])
+                    w1[..diff_index]
+                        .iter()
+                        .map(|&b| b as char)
+                        .collect::<String>(),
+                    w1[diff_index + 1..]
+                        .iter()
+                        .map(|&b| b as char)
+                        .collect::<String>()
                 );
                 break;
             }
