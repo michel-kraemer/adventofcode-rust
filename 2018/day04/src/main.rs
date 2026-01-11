@@ -41,15 +41,15 @@ fn main() {
     let mut guards: FxHashMap<usize, Vec<i64>> = FxHashMap::default();
     let mut events = Vec::new();
     for l in input.lines() {
-        let event_type = match &l[19..20] {
-            "G" => {
+        let event_type = match l.as_bytes()[19] {
+            b'G' => {
                 let (id, _) = l[26..].split_once(' ').unwrap();
                 let id = id.parse::<usize>().unwrap();
-                guards.insert(id, vec![0; 60]);
+                guards.entry(id).or_insert_with(|| vec![0; 60]);
                 EventType::Guard(id)
             }
-            "w" => EventType::Wakeup,
-            "f" => EventType::Asleep,
+            b'w' => EventType::Wakeup,
+            b'f' => EventType::Asleep,
             _ => unreachable!(),
         };
 
