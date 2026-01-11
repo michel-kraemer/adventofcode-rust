@@ -1,92 +1,128 @@
-use std::{
-    collections::{HashMap, HashSet},
-    fs,
-};
+use std::{cmp::Ordering, fs};
 
-enum Event {
+use rustc_hash::FxHashMap;
+
+#[derive(PartialEq, Eq, Debug)]
+enum EventType {
     Guard(usize),
-    Asleep(usize),
-    Wakeup(usize),
+    Wakeup,
+    Asleep,
+}
+
+#[derive(PartialEq, Eq, Debug)]
+struct Event {
+    month: u8,
+    day: u8,
+    hour: u8,
+    minute: u8,
+    event_type: EventType,
+}
+
+impl Ord for Event {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.month
+            .cmp(&other.month)
+            .then(self.day.cmp(&other.day))
+            .then(self.hour.cmp(&other.hour))
+            .then(self.minute.cmp(&other.minute))
+    }
+}
+
+impl PartialOrd for Event {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
 
-    // sort by date and time
-    let mut lines: Vec<&str> = input.lines().collect();
-    lines.sort();
-
-    // parse
-    let mut all_guards = HashSet::new();
-    let events = lines
-        .into_iter()
-        .map(|l| {
-            let p = l.split(' ').collect::<Vec<_>>();
-            let time = &p[1][..p[1].len() - 1];
-            let (_, minute) = time.split_once(':').unwrap();
-            let minute = minute.parse::<usize>().unwrap();
-
-            if p[3].starts_with('#') {
-                let g = p[3][1..].parse::<usize>().unwrap();
-                all_guards.insert(g);
-                Event::Guard(g)
-            } else if p[3] == "asleep" {
-                Event::Asleep(minute)
-            } else {
-                Event::Wakeup(minute)
+    // parse events
+    let mut guards: FxHashMap<usize, Vec<i64>> = FxHashMap::default();
+    let mut events = Vec::new();
+    for l in input.lines() {
+        let event_type = match &l[19..20] {
+            "G" => {
+                let (id, _) = l[26..].split_once(' ').unwrap();
+                let id = id.parse::<usize>().unwrap();
+                guards.insert(id, vec![0; 60]);
+                EventType::Guard(id)
             }
-        })
-        .collect::<Vec<_>>();
+            "w" => EventType::Wakeup,
+            "f" => EventType::Asleep,
+            _ => unreachable!(),
+        };
 
-    let mut hours = all_guards
-        .iter()
-        .map(|&g| (g, vec![0; 60]))
-        .collect::<HashMap<_, _>>();
+        // all entries are from the same year - skip parsing it
+        let event = Event {
+            month: l[6..8].parse().unwrap(),
+            day: l[9..11].parse().unwrap(),
+            hour: l[12..14].parse().unwrap(),
+            minute: l[15..17].parse().unwrap(),
+            event_type,
+        };
+        events.push(event);
+    }
 
-    let mut current_guard = 0;
-    let mut start_sleep = 0;
+    // sort events by time
+    events.sort_unstable();
+
+    // Iterate through events and assign them to each guard's timetable.
+    // Increase the value in the timetable if the guard falls asleep and
+    // decrease it they wake up. This allows us later to iterate over the time
+    // tables, compute a running sum, calculate the number of minutes asleep,
+    // and find the minute the guard was asleep the most.
+    let mut current_guard = guards.iter_mut().next().unwrap().1;
     for e in events {
-        match e {
-            Event::Guard(g) => {
-                current_guard = g;
-                all_guards.insert(g);
-            }
-            Event::Asleep(minute) => start_sleep = minute,
-            Event::Wakeup(minute) => {
-                if let Some(h) = hours.get_mut(&current_guard) {
-                    (start_sleep..minute).for_each(|i| {
-                        h[i] += 1;
-                    });
-                }
-            }
+        match e.event_type {
+            EventType::Guard(id) => current_guard = guards.get_mut(&id).unwrap(),
+            EventType::Wakeup => current_guard[e.minute as usize] -= 1,
+            EventType::Asleep => current_guard[e.minute as usize] += 1,
         }
     }
 
-    // part 1
-    let guard_with_max_sleep = hours
-        .iter()
-        .map(|(g, h)| (*g, h.iter().sum::<usize>()))
-        .max_by_key(|g| g.1)
-        .unwrap()
-        .0;
-    let max_minute_of_guard_with_max_sleep = hours
-        .get(&guard_with_max_sleep)
-        .unwrap()
-        .iter()
-        .enumerate()
-        .max_by_key(|h| *h.1)
-        .unwrap()
-        .0;
-    println!(
-        "{}",
-        guard_with_max_sleep * max_minute_of_guard_with_max_sleep
-    );
+    let mut part1_max_minutes_asleep = 0;
+    let mut total1 = 0;
 
-    // part 2
-    let guard_most_asleep = hours
-        .iter()
-        .map(|(g, h)| (*g, h.iter().enumerate().max_by_key(|v| v.1).unwrap()))
-        .max_by_key(|g| g.1 .1)
-        .unwrap();
-    println!("{}", guard_most_asleep.0 * guard_most_asleep.1 .0);
+    let mut part2_max = 0;
+    let mut total2 = 0;
+
+    for (id, minutes) in guards {
+        // Iterate over all minutes and compute total minutes asleep. Also find
+        // the one minute where the guard was asleep the most. Since the problem
+        // statement clearly says that we're looking for a single minute, we
+        // only need to consider the minutes when the guard falls asleep and
+        // when they wake up again.
+        let mut minutes_asleep = 0;
+        let mut last_minute = 0;
+        let mut sum = 0;
+        let mut max = 0;
+        let mut max_minute = 0;
+        for (minute, v) in minutes.into_iter().enumerate() {
+            if v != 0 {
+                minutes_asleep += (minute - last_minute) as i64 * sum;
+                sum += v;
+                if sum > max {
+                    max = sum;
+                    max_minute = minute;
+                }
+                last_minute = minute;
+            }
+        }
+
+        // part 1
+        if minutes_asleep > part1_max_minutes_asleep {
+            total1 = id * max_minute;
+            part1_max_minutes_asleep = minutes_asleep;
+        }
+
+        // part 2
+        if max > part2_max {
+            total2 = id * max_minute;
+            part2_max = max;
+        }
+    }
+
+    println!("{total1}");
+    println!("{total2}");
 }
