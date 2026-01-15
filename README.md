@@ -107,7 +107,7 @@ All measurements were performed with my [cargo bench-aoc](./cargo-bench-aoc/) to
 <td><strong><a href="./2018/day02/src/main.rs">Day 2:</a></strong></td><td align="right">29µs</td>
 <td><strong><a href="./2018/day03/src/main.rs">Day 3:</a></strong></td><td align="right">605µs</td>
 <td><strong><a href="./2018/day04/src/main.rs">Day 4:</a></strong></td><td align="right">42µs</td>
-<td><strong><a href="./2018/day05/src/main.rs">Day 5:</a></strong></td><td align="right">...</td>
+<td><strong><a href="./2018/day05/src/main.rs">Day 5:</a></strong></td><td align="right">426µs</td>
 </tr>
 <tr>
 <td><strong><a href="./2018/day06/src/main.rs">Day 6:</a></strong></td><td align="right">...</td>

@@ -1,13 +1,12 @@
 use std::{collections::VecDeque, fs};
 
-fn collapse<F>(polymer: &[u8], result: &mut VecDeque<u8>, f: F)
+fn collapse<'a, I>(polymer: I, result: &mut VecDeque<u8>)
 where
-    F: Fn(&&u8) -> bool,
+    I: Iterator<Item = &'a u8>,
 {
-    for b in polymer.iter().filter(f) {
-        if !result.is_empty()
-            && b.eq_ignore_ascii_case(result.back().unwrap())
-            && (b.is_ascii_lowercase() != result.back().unwrap().is_ascii_lowercase())
+    for b in polymer {
+        if let Some(a) = result.back()
+            && b.abs_diff(*a) == b'a' - b'A'
         {
             result.pop_back();
         } else {
@@ -26,15 +25,22 @@ fn main() {
     let mut result = VecDeque::with_capacity(polymer.len());
 
     // part 1
-    collapse(&polymer, &mut result, |_| true);
+    collapse(polymer.iter(), &mut result);
     println!("{}", result.len());
+
+    // Performance optimization: For part 2, we can start with the result of
+    // part 1. It's not necessary to do the same reductions again.
+    let polymer = Vec::from_iter(result.iter().copied());
 
     // part 2
     let mut min = usize::MAX;
     for u in b'a'..=b'z' {
         result.clear();
-        collapse(&polymer, &mut result, |c| !c.eq_ignore_ascii_case(&u));
+        collapse(
+            polymer.iter().filter(|b| !b.eq_ignore_ascii_case(&u)),
+            &mut result,
+        );
         min = min.min(result.len());
     }
-    println!("{}", min);
+    println!("{min}");
 }
