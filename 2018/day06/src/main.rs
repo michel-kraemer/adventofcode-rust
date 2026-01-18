@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, sync::Arc};
 
 /// A table of distances between grid cells and input coordinates, calculated on
 /// demand
@@ -178,30 +178,15 @@ fn find_minimum(
     (cx, cy)
 }
 
-fn main() {
-    // This solution is convoluted, but fast ;-)
-
-    let input = fs::read_to_string("input.txt").expect("Could not read file");
-
-    let mut min_x = i64::MAX;
-    let mut min_y = i64::MAX;
-    let mut max_x = i64::MIN;
-    let mut max_y = i64::MIN;
-    let coords = input
-        .lines()
-        .map(|l| {
-            let (x, y) = l.split_once(", ").unwrap();
-            let c = (x.parse::<i64>().unwrap(), y.parse::<i64>().unwrap());
-            min_x = min_x.min(c.0);
-            min_y = min_y.min(c.1);
-            max_x = max_x.max(c.0 + 1);
-            max_y = max_y.max(c.1 + 1);
-            c
-        })
-        .collect::<Vec<_>>();
-
-    // part 1 ...
-
+fn part1_worker(
+    coords: &[(i64, i64)],
+    min_x: i64,
+    min_y: i64,
+    max_x: i64,
+    max_y: i64,
+    first_chunk: bool,
+    last_chunk: bool,
+) -> (Vec<i64>, Vec<bool>) {
     // area sizes
     let mut areas = vec![0; coords.len()];
 
@@ -209,16 +194,18 @@ fn main() {
     let mut infinite = vec![false; coords.len()];
 
     // minimum distances per grid cell (calculated on demand)
-    let mut distances = Distances::new(min_x, min_y, max_x, max_y, &coords);
+    let mut distances = Distances::new(min_x, min_y, max_x, max_y, coords);
 
     // scan first row to find left and right edges of areas
     let mut edges = Vec::new();
     scan(min_x, max_x, min_y, &mut edges, &mut distances);
     update_area_sizes(&edges, &mut areas);
 
-    // all areas in the first row are infinite
-    for &(_, i) in &edges {
-        infinite[i] = true;
+    if first_chunk {
+        // all areas in the first row are infinite
+        for &(_, i) in &edges {
+            infinite[i] = true;
+        }
     }
 
     // scan all other rows and trace contours of areas
@@ -245,13 +232,15 @@ fn main() {
                 }
 
                 _ => {
-                    // another area or no man's land - check if the edge has moved right
+                    // another area or no man's land - check if the edge has
+                    // moved right
                     let mut x = old_left + 1;
                     while x <= old_right && distances.get_min(x, y) != Some(id) {
                         x += 1;
                     }
                     if x == old_right + 1 {
-                        // we've reached the end of the area - continue with next one
+                        // we've reached the end of the area - continue
+                        // with next one
                         continue;
                     }
                     x
@@ -273,13 +262,15 @@ fn main() {
                 }
 
                 _ => {
-                    // another area or no man's land - check if the edge has moved left
+                    // another area or no man's land - check if the edge has
+                    // moved left
                     let mut x = old_right - 1;
                     while x >= old_left && distances.get_min(x, y) != Some(id) {
                         x -= 1;
                     }
 
-                    // should have already been caught when tracing the left edge
+                    // should have already been caught when tracing the left
+                    // edge
                     assert!(
                         x != old_left - 1,
                         "Unexpected end of area {} at ({x},{y})",
@@ -290,7 +281,7 @@ fn main() {
                 }
             };
 
-            if new_left > prev_right + 1 {
+            if new_left > prev_right {
                 // there is a gap between the previous area's right edge and the
                 // current area's left edge - look for new areas in between
                 scan(prev_right, new_left, y, &mut new_edges, &mut distances);
@@ -320,9 +311,67 @@ fn main() {
         }
     }
 
-    // all areas in the last row are infinite
-    for &(_, i) in &edges {
-        infinite[i] = true;
+    if last_chunk {
+        // all areas in the last row are infinite
+        for &(_, i) in &edges {
+            infinite[i] = true;
+        }
+    }
+
+    (areas, infinite)
+}
+
+fn main() {
+    // This solution is convoluted, but fast ;-)
+
+    let input = fs::read_to_string("input.txt").expect("Could not read file");
+
+    let mut min_x = i64::MAX;
+    let mut min_y = i64::MAX;
+    let mut max_x = i64::MIN;
+    let mut max_y = i64::MIN;
+    let coords = input
+        .lines()
+        .map(|l| {
+            let (x, y) = l.split_once(", ").unwrap();
+            let c = (x.parse::<i64>().unwrap(), y.parse::<i64>().unwrap());
+            min_x = min_x.min(c.0);
+            min_y = min_y.min(c.1);
+            max_x = max_x.max(c.0 + 1);
+            max_y = max_y.max(c.1 + 1);
+            c
+        })
+        .collect::<Vec<_>>();
+    let coords = Arc::new(coords);
+
+    // part 1 ...
+
+    let chunk_size = ((max_y - min_y + 1) as usize).div_ceil(6);
+    let mut chunk_start = min_y as usize;
+    let mut thread_handles = Vec::new();
+    while chunk_start < max_y as usize {
+        let first_chunk = chunk_start as i64 == min_y;
+        let last_chunk = (chunk_start + chunk_size) as i64 >= max_y;
+        let min_y = chunk_start as i64;
+        let max_y = max_y.min((chunk_start + chunk_size) as i64);
+        let coords = Arc::clone(&coords);
+        thread_handles.push(std::thread::spawn(move || {
+            part1_worker(&coords, min_x, min_y, max_x, max_y, first_chunk, last_chunk)
+        }));
+        chunk_start += chunk_size;
+    }
+
+    // merge results of threads
+    let mut areas = vec![0; coords.len()];
+    let mut infinite = vec![false; coords.len()];
+    for th in thread_handles {
+        let (thread_areas, thread_infinite) = th.join().unwrap();
+        for (i, area) in thread_areas.into_iter().enumerate() {
+            areas[i] += area;
+        }
+        for (i, inf) in thread_infinite.into_iter().enumerate() {
+            infinite[i] |= inf;
+        }
     }
 
     // find the maximum size of all areas that are not infinite
