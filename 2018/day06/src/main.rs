@@ -17,12 +17,6 @@ struct Distances<'a> {
 
     /// A cache for already calculated minimum distances
     min_cache: Vec<Option<Option<usize>>>,
-
-    /// The minimum distance sum encountered so far (needed for part 2)
-    min_sum: u64,
-
-    /// The grid cell with the minimum distance sum
-    min_sum_coord: Option<(i64, i64)>,
 }
 
 impl<'a> Distances<'a> {
@@ -37,8 +31,6 @@ impl<'a> Distances<'a> {
             min_y,
             width,
             min_cache,
-            min_sum: u64::MAX,
-            min_sum_coord: None,
         }
     }
 
@@ -50,12 +42,10 @@ impl<'a> Distances<'a> {
             return c;
         }
 
-        let mut sum = 0;
         let mut min = u64::MAX;
         let mut min_index = None;
         for (i, c) in self.coords.iter().enumerate() {
             let dist = c.0.abs_diff(x) + c.1.abs_diff(y);
-            sum += dist;
             if dist < min {
                 min = dist;
                 min_index = Some(i);
@@ -65,11 +55,6 @@ impl<'a> Distances<'a> {
         }
 
         self.min_cache[idx] = Some(min_index);
-
-        if sum < self.min_sum {
-            self.min_sum = sum;
-            self.min_sum_coord = Some((x, y));
-        }
 
         min_index
     }
@@ -114,6 +99,83 @@ fn update_area_sizes(edges: &[(i64, usize)], areas: &mut [i64]) {
     for w in edges.chunks_exact(2) {
         areas[w[0].1] += w[1].0 - w[0].0 + 1;
     }
+}
+
+/// Find an approximate grid cell with a minimum distance sum. This is likely
+/// the geometric mean of all coordinates (or at least it should be very close
+/// to it).
+fn find_minimum(
+    coords: &[(i64, i64)],
+    min_x: i64,
+    min_y: i64,
+    max_x: i64,
+    max_y: i64,
+) -> (i64, i64) {
+    const DELTA: i64 = 10;
+
+    // find centroid as a starting point
+    let sum_x = coords.iter().map(|c| c.0).sum::<i64>();
+    let sum_y = coords.iter().map(|c| c.1).sum::<i64>();
+    let mut cx = sum_x / coords.len() as i64;
+    let mut cy = sum_y / coords.len() as i64;
+
+    // perform binary search in x-direction
+    let mut lo_x = min_x;
+    let mut hi_x = max_x;
+    let mut min = u64::MAX;
+    while lo_x < hi_x {
+        let s1 = get_sum(cx - DELTA, cy, coords);
+        let sc = get_sum(cx, cy, coords);
+        let s2 = get_sum(cx + DELTA, cy, coords);
+        if sc <= s1 && sc <= s2 {
+            for x in cx - DELTA..=cx + DELTA {
+                let s = get_sum(x, cy, coords);
+                if s < min {
+                    min = s;
+                    cx = x;
+                } else {
+                    break;
+                }
+            }
+            break;
+        } else if s1 < s2 {
+            hi_x = cx;
+            cx = (lo_x + hi_x) / 2;
+        } else {
+            lo_x = cx + 1;
+            cx = (lo_x + hi_x) / 2;
+        }
+    }
+
+    // perform binary search in y-direction
+    let mut lo_y = min_y;
+    let mut hi_y = max_y;
+    min = u64::MAX;
+    while lo_y < hi_y {
+        let s1 = get_sum(cx, cy - DELTA, coords);
+        let sc = get_sum(cx, cy, coords);
+        let s2 = get_sum(cx, cy + DELTA, coords);
+        if sc <= s1 && sc <= s2 {
+            for y in cy - DELTA..=cy + DELTA {
+                let s = get_sum(cx, y, coords);
+                if s < min {
+                    min = s;
+                    cy = y;
+                } else {
+                    break;
+                }
+            }
+            break;
+        } else if s1 < s2 {
+            hi_y = cy;
+            cy = (lo_y + hi_y) / 2;
+        } else {
+            lo_y = cy + 1;
+            cy = (lo_y + hi_y) / 2;
+        }
+    }
+
+    (cx, cy)
 }
 
 fn main() {
@@ -277,19 +339,8 @@ fn main() {
 
     // part 2 ...
 
-    // We assume that the safe region is not completely contained in an area.
-    // While we were tracing the areas, we've kept track of the minimum distance
-    // sum. Get the grid cell with the minimum distance sum. This is likely the
-    // geometric mean of all coordinates (or at least it should be very close
-    // to it).
-    assert!(
-        distances.min_sum < 10000,
-        "Minimum sum is larger than 10000. Another method to find any point \
-        within the safe region is needed."
-    );
-    let min_sum_coord = distances.min_sum_coord.unwrap();
-    let mut left = min_sum_coord.0;
-    let mut y = min_sum_coord.1;
+    // find a grid cell with a minimum distance sum
+    let (mut left, mut y) = find_minimum(&coords, min_x, min_y, max_x, max_y);
 
     // find the upper edge of the safe region (using binary search)
     let mut lo_y = min_y;
