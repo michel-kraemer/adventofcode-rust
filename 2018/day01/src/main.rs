@@ -1,7 +1,5 @@
 use std::fs;
 
-use rustc_hash::FxHashMap;
-
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
     let lines = input
@@ -31,36 +29,31 @@ fn main() {
         println!("0");
     } else {
         let mut frequencies = Vec::new();
-        let mut remainders: FxHashMap<i32, Vec<usize>> = FxHashMap::default();
+        let mut remainders: Vec<Vec<usize>> = vec![Vec::new(); total1 as usize];
         let mut sum = 0;
         for (i, &l) in lines.iter().enumerate() {
             sum += l;
             frequencies.push(sum);
-            remainders
-                .entry(sum.rem_euclid(total1))
-                .or_default()
-                .push(i);
+            remainders[sum.rem_euclid(total1) as usize].push(i);
         }
 
         let mut min = (i32::MAX, usize::MAX);
         let mut minf = 0;
         for (i, &f) in frequencies.iter().enumerate() {
-            let r = f % total1;
-            if let Some(js) = remainders.get(&r) {
-                for &j in js {
-                    if j == i {
-                        continue;
-                    }
-                    let n = (f - frequencies[j]) / total1;
-                    // n must be higher than 0 (which means the other frequency
-                    // doesn't come from the first round), or if it's 0 (first
-                    // round), then its index must at least be higher than the
-                    // index of the current frequency. Only then, we compare `n`
-                    // and the index with `min`.
-                    if (n > 0 || (n == 0 && j > i)) && (n, j) < min {
-                        min = (n, j);
-                        minf = f;
-                    }
+            let r = f.rem_euclid(total1);
+            for &j in &remainders[r as usize] {
+                if j == i {
+                    continue;
+                }
+                let n = (f - frequencies[j]) / total1;
+                // n must be higher than 0 (which means the other frequency
+                // doesn't come from the first round), or if it's 0 (first
+                // round), then its index must at least be higher than the
+                // index of the current frequency. Only then, we compare `n`
+                // and the index with `min`.
+                if (n > 0 || (n == 0 && j > i)) && (n, j) < min {
+                    min = (n, j);
+                    minf = f;
                 }
             }
         }
