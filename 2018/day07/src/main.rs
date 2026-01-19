@@ -1,82 +1,155 @@
 use std::{
-    collections::{HashMap, HashSet},
+    cmp::{Ordering, Reverse},
+    collections::BinaryHeap,
     fs,
 };
 
-fn main() {
-    for part1 in [true, false] {
-        let input = fs::read_to_string("input.txt").expect("Could not read file");
+/// An event that happens when a step has finished executing
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct StepFinishedEvent {
+    /// The time the step has finished
+    time: usize,
 
-        let mut all_steps = HashSet::new();
-        let instructions = input
-            .lines()
-            .map(|l| {
-                let p = l.split(' ').collect::<Vec<_>>();
-                let p1 = p[1].chars().next().unwrap();
-                let p7 = p[7].chars().next().unwrap();
-                all_steps.insert(p1);
-                all_steps.insert(p7);
-                (p1, p7)
-            })
-            .collect::<Vec<_>>();
+    /// The step ID
+    step: usize,
 
-        let num_steps = all_steps.len();
+    /// The worker on which the step was executed
+    worker: usize,
+}
 
-        // initialize dependencies for all known steps
-        let mut deps = all_steps
-            .into_iter()
-            .map(|a| (a, Vec::new()))
-            .collect::<HashMap<_, _>>();
+impl Ord for StepFinishedEvent {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.time.cmp(&self.time)
+    }
+}
 
-        // set dependencies for all steps
-        for i in &instructions {
-            deps.entry(i.1).or_default().push(i.0);
-        }
+impl PartialOrd for StepFinishedEvent {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
-        // convert dependencies to vector and sort alphabetically
-        let mut deps = deps.into_iter().collect::<Vec<_>>();
-        deps.sort_by_key(|d| d.0);
-
-        let mut result = String::new();
-        let mut workers: Vec<Option<(char, usize)>> = vec![None; if part1 { 1 } else { 4 }];
-        let mut time = 0;
-        loop {
-            // check which steps are finished
-            for w in workers.iter_mut() {
-                if let Some((step, remaining)) = w {
-                    *remaining -= 1;
-                    if *remaining == 0 {
-                        result.push(*step);
-                        *w = None;
-                    }
-                }
-            }
-
-            // for every idle worker, find a step to work on
-            for w in workers.iter_mut().filter(|w| w.is_none()) {
-                for i in 0..deps.len() {
-                    let d = &deps[i];
-                    if d.1.iter().all(|d| result.contains(*d)) {
-                        // we found a new item to work on
-                        *w = Some((d.0, (d.0 as u8 - b'A') as usize + 1 + 60));
-                        deps.remove(i);
-                        break;
-                    }
-                }
-            }
-
-            if result.len() == num_steps {
-                // all items are finished
-                break;
-            }
-
-            time += 1;
-        }
-
-        if part1 {
-            println!("{}", result);
-        } else {
-            println!("{}", time);
+/// Tries to schedule as many steps as possible from the wait queue to the given
+/// workers. Adds finished events to the event queue
+fn schedule(
+    wait_queue: &mut BinaryHeap<Reverse<usize>>,
+    event_queue: &mut BinaryHeap<StepFinishedEvent>,
+    workers: &mut [Option<usize>; 5],
+    current_time: usize,
+) {
+    for (i, w) in workers.iter_mut().enumerate() {
+        if w.is_none() {
+            let Some(Reverse(next_step)) = wait_queue.pop() else {
+                // nothing more to schedule
+                return;
+            };
+            *w = Some(next_step);
+            event_queue.push(StepFinishedEvent {
+                time: current_time + next_step + 61, // according to problem statement
+                step: next_step,
+                worker: i,
+            });
         }
     }
+}
+
+fn main() {
+    let input = fs::read_to_string("input.txt").expect("Could not read file");
+
+    let mut graph: [Vec<usize>; 26] = [const { Vec::new() }; 26];
+    let mut incoming: [usize; 26] = [0; 26];
+
+    for l in input.lines() {
+        let b = l.as_bytes();
+        let step = (b[5] - b'A') as usize;
+        let succ = (b[36] - b'A') as usize;
+        graph[step].push(succ);
+        incoming[succ] += 1;
+    }
+
+    // part 1 - simple topological sort
+    let mut part1_incoming: [usize; 26] = incoming;
+
+    // find all steps that don't have incoming edges
+    let mut start_steps = Vec::new();
+    for (n, succ) in graph.iter().enumerate() {
+        if !succ.is_empty() && part1_incoming[n] == 0 {
+            start_steps.push(n);
+        }
+    }
+
+    // add steps without incoming edges into a queue (BinaryHeap makes sure
+    // they're sorted alphabetically)
+    let mut queue = BinaryHeap::new();
+    for &n in &start_steps {
+        queue.push(Reverse(n));
+    }
+
+    let mut sorted = Vec::new();
+    while let Some(Reverse(n)) = queue.pop() {
+        // remove ready step and add it to result
+        sorted.push(n);
+
+        // Remove edge from n to succ. If succ becomes ready, add it to queue.
+        for &succ in &graph[n] {
+            part1_incoming[succ] -= 1;
+            if part1_incoming[succ] == 0 {
+                queue.push(Reverse(succ));
+            }
+        }
+    }
+
+    println!(
+        "{}",
+        sorted
+            .iter()
+            .map(|&b| (b as u8 + b'A') as char)
+            .collect::<String>()
+    );
+
+    // part 2 - simulate a simple event-based scheduler with a planning phase
+    // and a scheduling phase. Ready steps are added into a wait queue.
+    // Available workers take ready steps from the wait queue (see schedule
+    // function) and execute them. When a step has finished, an event appears in
+    // the event_queue.
+    let mut current_time = 0;
+    let mut workers = [None; 5];
+
+    // makes sure finished events are processed in order
+    let mut event_queue = BinaryHeap::new();
+
+    // makes sure steps are sorted alphabetically
+    let mut wait_queue = BinaryHeap::new();
+
+    // add all steps without incoming edges into the wait queue
+    for &n in &start_steps {
+        wait_queue.push(Reverse(n));
+    }
+
+    // schedule first steps
+    schedule(&mut wait_queue, &mut event_queue, &mut workers, 0);
+
+    while let Some(e) = event_queue.pop() {
+        // A step has finished. Update current time and worker.
+        current_time = e.time;
+        workers[e.worker] = None;
+
+        // plan phase - add steps that become ready into the wait queue
+        for &succ in &graph[e.step] {
+            incoming[succ] -= 1;
+            if incoming[succ] == 0 {
+                wait_queue.push(Reverse(succ));
+            }
+        }
+
+        // schedule phase - assign steps to workers
+        schedule(
+            &mut wait_queue,
+            &mut event_queue,
+            &mut workers,
+            current_time,
+        );
+    }
+
+    println!("{current_time}");
 }
