@@ -1,58 +1,94 @@
-use std::fs;
+use std::{fs, str::Bytes};
+
+/// This is faster than splitting the lines by whitespace and then using parse()
+fn parse_next_number(bytes: &mut Bytes) -> Option<i64> {
+    let mut b = bytes.next()?;
+    while b != b'-' && !b.is_ascii_digit() {
+        b = bytes.next()?;
+    }
+
+    let negative = if b == b'-' {
+        b = bytes.next()?;
+        true
+    } else {
+        false
+    };
+
+    let mut r = 0;
+    while b.is_ascii_digit() {
+        r *= 10;
+        r += (b - b'0') as i64;
+        b = bytes.next()?;
+    }
+
+    Some(if negative { -r } else { r })
+}
+
+/// Get the bounding box of the particles at a given point in time
+fn get_bbox(particles: &[(i64, i64, i64, i64)], seconds: i64) -> (i64, i64, i64, i64) {
+    let mut min_x = i64::MAX;
+    let mut min_y = i64::MAX;
+    let mut max_x = i64::MIN;
+    let mut max_y = i64::MIN;
+    for p in particles {
+        let x = p.0 + p.2 * seconds;
+        let y = p.1 + p.3 * seconds;
+        min_x = min_x.min(x);
+        min_y = min_y.min(y);
+        max_x = max_x.max(x);
+        max_y = max_y.max(y);
+    }
+    (min_x, min_y, max_x, max_y)
+}
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
-    let mut particles = input
-        .lines()
-        .map(|l| {
-            let p = l.split(&['<', '>']).collect::<Vec<_>>();
-            let (px, py) = p[1].split_once(',').unwrap();
-            let (vx, vy) = p[3].split_once(',').unwrap();
-            let px = px.trim().parse::<i64>().unwrap();
-            let py = py.trim().parse::<i64>().unwrap();
-            let vx = vx.trim().parse::<i64>().unwrap();
-            let vy = vy.trim().parse::<i64>().unwrap();
-            (px, py, vx, vy)
-        })
-        .collect::<Vec<_>>();
-
-    let mut seconds = 0;
-    let mut grid = Vec::new();
-    let mut min_area = i64::MAX;
+    let mut bytes = input.bytes();
+    let mut particles = Vec::new();
     loop {
-        let min_x = particles.iter().map(|p| p.0).min().unwrap();
-        let min_y = particles.iter().map(|p| p.1).min().unwrap();
-        let max_x = particles.iter().map(|p| p.0).max().unwrap();
-        let max_y = particles.iter().map(|p| p.1).max().unwrap();
-        let area = (max_x - min_x) * (max_y - min_y);
-        if area > min_area {
+        let Some(px) = parse_next_number(&mut bytes) else {
+            break;
+        };
+        let py = parse_next_number(&mut bytes).unwrap();
+        let vx = parse_next_number(&mut bytes).unwrap();
+        let vy = parse_next_number(&mut bytes).unwrap();
+        particles.push((px, py, vx, vy));
+    }
+
+    // simulate particle movement until the area covered by the particles
+    // reaches a minimum
+    let mut seconds = 0;
+    let mut min_x;
+    let mut min_y;
+    let mut max_x;
+    let mut max_y;
+    loop {
+        (min_x, min_y, max_x, max_y) = get_bbox(&particles, seconds);
+        let area1 = (max_x - min_x) * (max_y - min_y);
+        let (min_x, min_y, max_x, max_y) = get_bbox(&particles, seconds + 1);
+        let area2 = (max_x - min_x) * (max_y - min_y);
+        if area2 > area1 {
             break;
         }
-        min_area = area;
+        // find difference and quickly skip ahead
+        seconds += (area1 / (area1 - area2) - 1).max(1);
+    }
 
-        if area < 1000 {
-            let w = (max_x - min_x + 1) as usize;
-            let h = (max_y - min_y + 1) as usize;
-            grid = vec![vec![' '; w]; h];
-            for p in &particles {
-                let x = p.0 - min_x;
-                let y = p.1 - min_y;
-                grid[y as usize][x as usize] = '█';
-            }
-        }
-
-        for p in &mut particles {
-            p.0 += p.2;
-            p.1 += p.3;
-        }
-
-        seconds += 1;
+    // render particles into a grid
+    let w = (max_x - min_x + 1) as usize;
+    let h = (max_y - min_y + 1) as usize;
+    let mut grid = vec![vec![' '; w]; h];
+    for p in particles {
+        let x = p.0 + p.2 * seconds - min_x;
+        let y = p.1 + p.3 * seconds - min_y;
+        grid[y as usize][x as usize] = '█';
     }
 
     // part 1
-    grid.iter()
-        .for_each(|r| println!("{}", String::from_iter(r)));
+    for r in grid {
+        println!("{}", String::from_iter(r));
+    }
 
     // part 2
-    println!("{}", seconds - 1);
+    println!("{seconds}");
 }
