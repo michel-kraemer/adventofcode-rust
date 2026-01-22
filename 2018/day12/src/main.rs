@@ -1,81 +1,126 @@
 use std::fs;
 
-fn step(
-    state: &[u64],
-    pos: i64,
-    len: usize,
-    rules: &[bool; 32],
-    new_state: &mut Vec<u64>,
-) -> (i64, usize) {
-    new_state.clear();
-    new_state.push(0);
-
-    let mut index_last = 0;
-    let mut j = 4;
-
-    let mut i = state[0].trailing_zeros() as usize - 4;
-    let pos = pos + i as i64 - 2;
-    while i < len {
-        let d = i / 64;
-        let m = i % 64;
-        let mut w = ((state[d] >> m) & 0b11111) as usize;
-        if m >= 60 && d + 1 < state.len() {
-            w |= (state[d + 1] as usize & ((1 << (m - 59)) - 1)) << (64 - m);
-        }
-
-        if j % 64 == 0 {
-            new_state.push(0);
-            index_last += 1;
-        }
-        if rules[w] {
-            new_state[index_last] |= 1 << j;
-        }
-
-        j += 1;
-        i += 1;
-    }
-
-    (
-        pos,
-        index_last * 64 + (64 - new_state[index_last].leading_zeros() as usize),
-    )
+/// Compute the length of the given bit vector
+fn get_len(state: &[u64]) -> usize {
+    let l = state.len() - 1;
+    l * 64 + (64 - state[l].leading_zeros() as usize)
 }
 
-fn sum(state: &[u64], pos: i64, len: usize) -> i64 {
-    let mut result = 0;
-    for i in state[0].trailing_zeros() as usize..len {
-        if state[i / 64] >> (i % 64) & 1 > 0 {
-            result += i as i64 + pos;
+struct Pots {
+    /// A bit vector representing the pots. 1 means there is a plant in the pot,
+    /// 0 means there isn't.
+    state: Vec<u64>,
+
+    /// A copy of the bit vector `state` before [Self::step] was called
+    prev_state: Vec<u64>,
+
+    /// The ID of the pot at the beginning of the bit vector `state`
+    pos: i64,
+
+    /// The length of the bit vector `state`
+    len: usize,
+}
+
+impl Pots {
+    /// Parses the initial state into a bit vector
+    fn from(initial_state: &[u8]) -> Self {
+        // leave four bits empty at the beginning, so extracting bits in
+        // `step()` is easier
+        let mut state: Vec<u64> = vec![0];
+        let mut index_last = 0;
+        for (i, &b) in initial_state.iter().enumerate() {
+            let r = (i + 4) % 64;
+            if r == 0 {
+                state.push(0);
+                index_last += 1;
+            }
+            if b == b'#' {
+                state[index_last] |= 1 << r;
+            }
+        }
+
+        // truncate bit vector at the last set bit
+        let len = get_len(&state);
+
+        Self {
+            state,
+            prev_state: Vec::new(),
+            pos: -4,
+            len,
         }
     }
-    result
+
+    /// Applies the given rules to the pots and updates [Self::state]. A copy of
+    /// the state before this method was called is left in [Self::prev_state].
+    fn step(&mut self, rules: &[bool; 32]) {
+        // prepare new state
+        std::mem::swap(&mut self.state, &mut self.prev_state);
+        self.state.clear();
+        self.state.push(0);
+        let mut index_last = 0;
+
+        // leave four bits empty at the beginning
+        let mut j = 4;
+
+        // skip trailing zeros so the pots always start at the same bit
+        // position, regardless of `self::pos`
+        let mut i = self.prev_state[0].trailing_zeros() as usize - 4;
+        self.pos += i as i64 - 2;
+
+        // apply rules and built up new state
+        while i < self.len {
+            let q = i / 64;
+            let r = i % 64;
+
+            // extract up to five bits from the state at index q and position r
+            let mut w = ((self.prev_state[q] >> r) & 0b11111) as usize;
+
+            // if necessary, extract remaining bits from index q + 1
+            if r >= 60 && q + 1 < self.prev_state.len() {
+                w |= (self.prev_state[q + 1] as usize & ((1 << (r - 59)) - 1)) << (64 - r);
+            }
+
+            if j % 64 == 0 {
+                self.state.push(0);
+                index_last += 1;
+                j = 0;
+            }
+            if rules[w] {
+                self.state[index_last] |= 1 << j;
+            }
+
+            j += 1;
+            i += 1;
+        }
+
+        // truncate bit vector at the last set bit
+        self.len = get_len(&self.state);
+    }
+
+    /// Returns the sum of the numbers of all pots containing plants
+    fn sum(&self) -> i64 {
+        let mut result = 0;
+        for (i, &(mut s)) in self.state.iter().enumerate() {
+            while s > 0 {
+                // select LSB and reset it
+                let j = s.trailing_zeros() as i64;
+                s &= s - 1;
+
+                result += i as i64 * 64 + j + self.pos;
+            }
+        }
+        result
+    }
 }
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
     let mut lines = input.lines();
+
+    // parse initial state
     let initial_state = lines.next().unwrap();
     let initial_state = &initial_state[15..];
-
-    // Parse initial state into a bit vector. Leave four bits empty at the
-    // beginning, so extracting bits in `step()` is easier.
-    let mut state: Vec<u64> = vec![0];
-    let mut index_last = 0;
-    for (i, b) in initial_state.bytes().enumerate() {
-        if (i + 4) % 64 == 0 {
-            state.push(0);
-            index_last += 1;
-        }
-        if b == b'#' {
-            state[index_last] |= 1 << ((i + 4) % 64);
-        }
-    }
-
-    // `pos` represents the ID of the pot at the beginning of the bit vector
-    let mut pos = -4;
-
-    // `len` is the length of the bit vector. Truncate it at the last set bit.
-    let mut len = index_last * 64 + (64 - state[index_last].leading_zeros() as usize);
+    let mut pots = Pots::from(initial_state.as_bytes());
 
     // parse rules into a table with all possible 2^5 bit patterns
     lines.next();
@@ -88,7 +133,7 @@ fn main() {
             let mut p = 0_usize;
             for (i, &b) in from.iter().enumerate() {
                 if b == b'#' {
-                    p += 1 << i;
+                    p |= 1 << i;
                 }
             }
             rules[p] = true;
@@ -96,35 +141,26 @@ fn main() {
     }
 
     // part 1 - simulate the first 20 steps
-    let mut prev_state = Vec::new();
     let mut steps = 0_i64;
     while steps < 20 {
-        (state, prev_state) = (prev_state, state);
-        (pos, len) = step(&prev_state, pos, len, &rules, &mut state);
+        pots.step(&rules);
         steps += 1;
     }
-    println!("{}", sum(&state, pos, len));
+    println!("{}", pots.sum());
 
     // part 2 - only simulate until the pattern repeats
     let mut prev_pos = 0;
     while steps < 50_000_000_000 {
-        (state, prev_state) = (prev_state, state);
-        prev_pos = pos;
-        (pos, len) = step(&prev_state, prev_pos, len, &rules, &mut state);
+        prev_pos = pots.pos;
+        pots.step(&rules);
         steps += 1;
-        if state == prev_state {
+        if pots.state == pots.prev_state {
             // pattern has repeated
             break;
         }
     }
 
     // extrapolate to 50 billion steps
-    println!(
-        "{}",
-        sum(
-            &state,
-            pos + (pos - prev_pos) * (50_000_000_000 - steps),
-            len,
-        )
-    );
+    pots.pos += (pots.pos - prev_pos) * (50_000_000_000 - steps);
+    println!("{}", pots.sum());
 }
