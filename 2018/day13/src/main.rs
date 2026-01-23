@@ -1,49 +1,64 @@
-use std::{fs, mem};
+use std::fs;
 
-#[derive(PartialEq, Eq, Copy, Clone)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Turn {
     Left,
     Straight,
     Right,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+struct Cart {
+    id: usize,
+    x: usize,
+    y: usize,
+    dx: isize,
+    dy: isize,
+    turn: Turn,
+}
+
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
     let mut grid = input
         .lines()
-        .map(|l| l.chars().collect::<Vec<_>>())
+        .map(|l| l.bytes().collect::<Vec<_>>())
         .collect::<Vec<_>>();
 
-    let mut carts: Vec<(i32, i32, i32, i32, usize, Turn)> = Vec::new();
+    let mut carts: Vec<Cart> = Vec::new();
     let mut cart_positions = vec![vec![usize::MAX; grid[0].len()]; grid.len()];
     for (y, row) in grid.iter_mut().enumerate() {
-        for (x, c) in row.iter_mut().enumerate() {
-            match c {
-                '>' => {
-                    *c = '-';
-                    cart_positions[y][x] = carts.len();
-                    carts.push((y as i32, x as i32, 0, 1, carts.len(), Turn::Left));
+        for (x, b) in row.iter_mut().enumerate() {
+            let (dx, dy) = match b {
+                b'>' => {
+                    *b = b'-';
+                    (1, 0)
                 }
-                '<' => {
-                    *c = '-';
-                    cart_positions[y][x] = carts.len();
-                    carts.push((y as i32, x as i32, 0, -1, carts.len(), Turn::Left));
+                b'<' => {
+                    *b = b'-';
+                    (-1, 0)
                 }
-                'v' => {
-                    *c = '|';
-                    cart_positions[y][x] = carts.len();
-                    carts.push((y as i32, x as i32, 1, 0, carts.len(), Turn::Left));
+                b'v' => {
+                    *b = b'|';
+                    (0, 1)
                 }
-                '^' => {
-                    *c = '|';
-                    cart_positions[y][x] = carts.len();
-                    carts.push((y as i32, x as i32, -1, 0, carts.len(), Turn::Left));
+                b'^' => {
+                    *b = b'|';
+                    (0, -1)
                 }
-                _ => {}
-            }
+                _ => continue,
+            };
+            cart_positions[y][x] = carts.len();
+            carts.push(Cart {
+                x,
+                y,
+                dx,
+                dy,
+                id: carts.len(),
+                turn: Turn::Left,
+            });
         }
     }
-    carts.sort_unstable_by_key(|c| (c.0, c.1));
+    carts.sort_unstable_by_key(|c| (c.y, c.x));
 
     let mut first_crashed = false;
 
@@ -51,49 +66,46 @@ fn main() {
         let mut sci = 0;
         while sci < carts.len() {
             let sc = &mut carts[sci];
-            cart_positions[sc.0 as usize][sc.1 as usize] = usize::MAX;
+            cart_positions[sc.y][sc.x] = usize::MAX;
 
-            let c = grid[sc.0 as usize][sc.1 as usize];
-            match c {
-                '-' | '|' => {
+            let b = grid[sc.y][sc.x];
+            match b {
+                b'-' | b'|' => {
                     // continue straight
                 }
 
-                '/' => {
-                    let dy = sc.2;
-                    let dx = sc.3;
-                    sc.2 = -dx;
-                    sc.3 = -dy;
+                b'/' => {
+                    (sc.dx, sc.dy) = (-sc.dy, -sc.dx);
                 }
 
-                '\\' => {
-                    mem::swap(&mut sc.2, &mut sc.3);
+                b'\\' => {
+                    (sc.dx, sc.dy) = (sc.dy, sc.dx);
                 }
 
-                '+' => {
-                    let ndir = match sc.5 {
-                        Turn::Left => (-sc.3, sc.2, Turn::Straight),
-                        Turn::Straight => (sc.2, sc.3, Turn::Right),
-                        Turn::Right => (sc.3, -sc.2, Turn::Left),
+                b'+' => {
+                    let ndir = match sc.turn {
+                        Turn::Left => (sc.dy, -sc.dx, Turn::Straight),
+                        Turn::Straight => (sc.dx, sc.dy, Turn::Right),
+                        Turn::Right => (-sc.dy, sc.dx, Turn::Left),
                     };
-                    sc.2 = ndir.0;
-                    sc.3 = ndir.1;
-                    sc.5 = ndir.2;
+                    sc.dx = ndir.0;
+                    sc.dy = ndir.1;
+                    sc.turn = ndir.2;
                 }
 
-                _ => panic!(),
+                _ => unreachable!(),
             }
 
-            sc.0 += sc.2;
-            sc.1 += sc.3;
+            let scx = sc.x.wrapping_add_signed(sc.dx);
+            let scy = sc.y.wrapping_add_signed(sc.dy);
 
-            let scy = sc.0;
-            let scx = sc.1;
+            sc.x = scx;
+            sc.y = scy;
 
             let mut crashed = false;
-            let other_cart = &mut cart_positions[scy as usize][scx as usize];
+            let other_cart = &mut cart_positions[scy][scx];
             if *other_cart != usize::MAX {
-                let oci = carts.iter().position(|c| c.4 == *other_cart).unwrap();
+                let oci = carts.iter().position(|c| c.id == *other_cart).unwrap();
                 if oci < sci {
                     carts.remove(sci);
                     carts.remove(oci);
@@ -105,7 +117,7 @@ fn main() {
                 crashed = true;
                 *other_cart = usize::MAX;
             } else {
-                *other_cart = sc.4;
+                *other_cart = sc.id;
             }
 
             if crashed && !first_crashed {
@@ -119,9 +131,11 @@ fn main() {
             }
         }
 
-        carts.sort_unstable_by_key(|c| (c.0, c.1));
+        // `carts` is mostly sorted, so `sort_by_key` is faster than
+        // `sort_unstable_by_key`
+        carts.sort_by_key(|c| (c.y, c.x));
     }
 
     // part 2
-    println!("{},{}", carts[0].1, carts[0].0);
+    println!("{},{}", carts[0].x, carts[0].y);
 }
