@@ -19,15 +19,17 @@ struct Cart {
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
-    let mut grid = input
-        .lines()
-        .map(|l| l.bytes().collect::<Vec<_>>())
-        .collect::<Vec<_>>();
+
+    let lines = input.lines().collect::<Vec<_>>();
+    let width = lines[0].len();
+    let height = lines.len();
+    let mut grid = lines.iter().flat_map(|l| l.bytes()).collect::<Vec<_>>();
 
     let mut carts: Vec<Cart> = Vec::new();
-    let mut cart_positions = vec![vec![usize::MAX; grid[0].len()]; grid.len()];
-    for (y, row) in grid.iter_mut().enumerate() {
-        for (x, b) in row.iter_mut().enumerate() {
+    let mut cart_positions = vec![usize::MAX; width * height];
+    for y in 0..height {
+        for x in 0..width {
+            let b = &mut grid[y * width + x];
             let (dx, dy) = match b {
                 b'>' => {
                     *b = b'-';
@@ -47,7 +49,7 @@ fn main() {
                 }
                 _ => continue,
             };
-            cart_positions[y][x] = carts.len();
+            cart_positions[y * width + x] = carts.len();
             carts.push(Cart {
                 x,
                 y,
@@ -66,14 +68,10 @@ fn main() {
         let mut sci = 0;
         while sci < carts.len() {
             let sc = &mut carts[sci];
-            cart_positions[sc.y][sc.x] = usize::MAX;
+            cart_positions[sc.y * width + sc.x] = usize::MAX;
 
-            let b = grid[sc.y][sc.x];
+            let b = grid[sc.y * width + sc.x];
             match b {
-                b'-' | b'|' => {
-                    // continue straight
-                }
-
                 b'/' => {
                     (sc.dx, sc.dy) = (-sc.dy, -sc.dx);
                 }
@@ -93,7 +91,9 @@ fn main() {
                     sc.turn = ndir.2;
                 }
 
-                _ => unreachable!(),
+                _ => {
+                    // continue straight
+                }
             }
 
             let scx = sc.x.wrapping_add_signed(sc.dx);
@@ -103,7 +103,7 @@ fn main() {
             sc.y = scy;
 
             let mut crashed = false;
-            let other_cart = &mut cart_positions[scy][scx];
+            let other_cart = &mut cart_positions[scy * width + scx];
             if *other_cart != usize::MAX {
                 let oci = carts.iter().position(|c| c.id == *other_cart).unwrap();
                 if oci < sci {
