@@ -1,24 +1,15 @@
 use std::fs;
 
-/// Compute the length of the given bit vector
-fn get_len(state: &[u64]) -> usize {
-    let l = state.len() - 1;
-    l * 64 + (64 - state[l].leading_zeros() as usize)
-}
-
 struct Pots {
     /// A bit vector representing the pots. 1 means there is a plant in the pot,
     /// 0 means there isn't.
-    state: Vec<u64>,
+    state: Vec<usize>,
 
     /// A copy of the bit vector `state` before [Self::step] was called
-    prev_state: Vec<u64>,
+    prev_state: Vec<usize>,
 
     /// The ID of the pot at the beginning of the bit vector `state`
     pos: i64,
-
-    /// The length of the bit vector `state`
-    len: usize,
 }
 
 impl Pots {
@@ -26,7 +17,7 @@ impl Pots {
     fn from(initial_state: &[u8]) -> Self {
         // leave four bits empty at the beginning, so extracting bits in
         // `step()` is easier
-        let mut state: Vec<u64> = vec![0];
+        let mut state = vec![0];
         let mut index_last = 0;
         for (i, &b) in initial_state.iter().enumerate() {
             let r = (i + 4) % 64;
@@ -39,14 +30,10 @@ impl Pots {
             }
         }
 
-        // truncate bit vector at the last set bit
-        let len = get_len(&state);
-
         Self {
             state,
             prev_state: Vec::new(),
             pos: -4,
-            len,
         }
     }
 
@@ -67,17 +54,21 @@ impl Pots {
         let mut i = self.prev_state[0].trailing_zeros() as usize - 4;
         self.pos += i as i64 - 2;
 
+        // truncate bit vector at the last set bit
+        let len = (self.prev_state.len() - 1) * 64
+            + (64 - self.prev_state[self.prev_state.len() - 1].leading_zeros() as usize);
+
         // apply rules and built up new state
-        while i < self.len {
+        while i < len {
             let q = i / 64;
             let r = i % 64;
 
             // extract up to five bits from the state at index q and position r
-            let mut w = ((self.prev_state[q] >> r) & 0b11111) as usize;
+            let mut w = (self.prev_state[q] >> r) & 0b11111;
 
             // if necessary, extract remaining bits from index q + 1
             if r >= 60 && q + 1 < self.prev_state.len() {
-                w |= (self.prev_state[q + 1] as usize & ((1 << (r - 59)) - 1)) << (64 - r);
+                w |= (self.prev_state[q + 1] & ((1 << (r - 59)) - 1)) << (64 - r);
             }
 
             if j % 64 == 0 {
@@ -85,14 +76,11 @@ impl Pots {
                 index_last += 1;
                 j = 0;
             }
-            self.state[index_last] |= (rules[w] as u64) << j;
+            self.state[index_last] |= (rules[w] as usize) << j;
 
             j += 1;
             i += 1;
         }
-
-        // truncate bit vector at the last set bit
-        self.len = get_len(&self.state);
     }
 
     /// Returns the sum of the numbers of all pots containing plants
@@ -128,7 +116,7 @@ fn main() {
         let from = &bytes[0..5];
         let to = bytes[9];
         if to == b'#' {
-            let mut p = 0_usize;
+            let mut p = 0;
             for (i, &b) in from.iter().enumerate() {
                 if b == b'#' {
                     p |= 1 << i;
