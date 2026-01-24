@@ -85,9 +85,7 @@ impl Pots {
                 index_last += 1;
                 j = 0;
             }
-            if rules[w] {
-                self.state[index_last] |= 1 << j;
-            }
+            self.state[index_last] |= (rules[w] as u64) << j;
 
             j += 1;
             i += 1;
