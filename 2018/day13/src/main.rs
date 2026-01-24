@@ -17,7 +17,18 @@ struct Cart {
     turn: Turn,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+struct Position {
+    id: usize,
+    step: usize,
+}
+
 fn main() {
+    // performance optimization: instead of sorting the carts by their y and x
+    // coordinate before each step, we optimistically move them, and if we
+    // detect a possible crash, we enter a recovery mode where we try the step
+    // again and check if the crash actually happens
+
     let input = fs::read_to_string("input.txt").expect("Could not read file");
 
     let lines = input.lines().collect::<Vec<_>>();
@@ -26,7 +37,14 @@ fn main() {
     let mut grid = lines.iter().flat_map(|l| l.bytes()).collect::<Vec<_>>();
 
     let mut carts: Vec<Cart> = Vec::new();
-    let mut cart_positions = vec![usize::MAX; width * height];
+    let mut new_carts: Vec<Cart> = Vec::new();
+    let mut cart_positions = vec![
+        Position {
+            id: usize::MAX,
+            step: usize::MAX
+        };
+        width * height
+    ];
     for y in 0..height {
         for x in 0..width {
             let b = &mut grid[y * width + x];
@@ -49,7 +67,10 @@ fn main() {
                 }
                 _ => continue,
             };
-            cart_positions[y * width + x] = carts.len();
+            cart_positions[y * width + x] = Position {
+                id: carts.len(),
+                step: 0,
+            };
             carts.push(Cart {
                 x,
                 y,
@@ -60,15 +81,17 @@ fn main() {
             });
         }
     }
-    carts.sort_unstable_by_key(|c| (c.y, c.x));
 
     let mut first_crashed = false;
+    let mut step = 1;
+    let mut recovery = false;
 
-    while carts.len() > 1 {
+    'outer: while carts.len() > 1 {
+        new_carts.clear();
+
         let mut sci = 0;
         while sci < carts.len() {
-            let sc = &mut carts[sci];
-            cart_positions[sc.y * width + sc.x] = usize::MAX;
+            let mut sc = carts[sci];
 
             let b = grid[sc.y * width + sc.x];
             match b {
@@ -102,38 +125,58 @@ fn main() {
             sc.x = scx;
             sc.y = scy;
 
-            let mut crashed = false;
             let other_cart = &mut cart_positions[scy * width + scx];
-            if *other_cart != usize::MAX {
-                let oci = carts.iter().position(|c| c.id == *other_cart).unwrap();
+            if !recovery && other_cart.step.abs_diff(step) <= 1 {
+                // a possible crash was detected - enter recovery mode
+                recovery = true;
+
+                // increment `step` by an arbitrary number to invalidate all
+                // entries in `cart_positions`
+                step += 10;
+                for c in &carts {
+                    cart_positions[c.y * width + c.x] = Position { id: c.id, step };
+                }
+
+                // pretend we start in a fresh new step with a sorted list of
+                // carts
+                step += 1;
+                carts.sort_unstable_by_key(|c| (c.y, c.x));
+
+                continue 'outer;
+            } else if recovery
+                && ((sc.dx == 1 || sc.dy == 1) && other_cart.step + 1 == step
+                    || (sc.dx == -1 || sc.dy == -1) && other_cart.step == step)
+            {
+                // we're in recovery mode and this is a real crash
+                let oci = carts.iter().position(|c| c.id == other_cart.id).unwrap();
                 if oci < sci {
                     carts.remove(sci);
                     carts.remove(oci);
+                    new_carts.remove(oci);
                     sci -= 1;
                 } else {
                     carts.remove(oci);
                     carts.remove(sci);
                 }
-                crashed = true;
-                *other_cart = usize::MAX;
+                other_cart.step = usize::MAX;
+
+                if !first_crashed {
+                    // part 1
+                    println!("{scx},{scy}");
+                    first_crashed = true;
+                }
             } else {
-                *other_cart = sc.id;
-            }
-
-            if crashed && !first_crashed {
-                // part 1
-                println!("{scx},{scy}");
-                first_crashed = true;
-            }
-
-            if !crashed {
+                // the new position is free
+                other_cart.id = sc.id;
+                other_cart.step = step;
+                new_carts.push(sc);
                 sci += 1;
             }
         }
 
-        // `carts` is mostly sorted, so `sort_by_key` is faster than
-        // `sort_unstable_by_key`
-        carts.sort_by_key(|c| (c.y, c.x));
+        step += 1;
+        recovery = false;
+        (carts, new_carts) = (new_carts, carts);
     }
 
     // part 2
