@@ -18,36 +18,45 @@ fn parse_number(bytes: &mut Bytes) -> usize {
     r
 }
 
-fn drop(grid: &mut [Vec<u8>], x: usize, start_y: usize, water: &mut usize, pipes: &mut usize) {
+fn drop(
+    grid: &mut [u8],
+    width: usize,
+    height: usize,
+    x: usize,
+    start_y: usize,
+    water: &mut usize,
+    pipes: &mut usize,
+) {
     let mut y = start_y;
 
     // find bottom
-    while y < grid.len() && grid[y][x] == b'.' {
+    while y < height && grid[y * width + x] == b'.' {
         y += 1;
     }
 
     // check if we've reached the end of the grid or we've already been here
-    if y != grid.len() && grid[y][x] != b'|' {
+    if y != height && grid[y * width + x] != b'|' {
         y -= 1;
         while y >= start_y {
+            let yi = y * width;
             let mut overflow = false;
 
             // find left and right borders
             let mut left_x = x;
             let mut right_x = x;
-            for (z, dz, e) in [(&mut left_x, -1, 0), (&mut right_x, 1, grid[y].len())] {
-                while *z != e && grid[y][z.wrapping_add_signed(dz)] != b'#' {
+            for (z, dz, e) in [(&mut left_x, -1, 0), (&mut right_x, 1, width)] {
+                while *z != e && grid[yi + z.wrapping_add_signed(dz)] != b'#' {
                     *z = z.wrapping_add_signed(dz);
-                    if grid[y + 1][*z] == b'.' {
+                    if grid[yi + width + *z] == b'.' {
                         // Overflow. Drop down.
-                        drop(grid, *z, y + 1, water, pipes);
-                        if grid[y + 1][*z] != b'~' {
+                        drop(grid, width, height, *z, y + 1, water, pipes);
+                        if grid[yi + width + *z] != b'~' {
                             // it's only really an overflow if we've not filled
                             // everything below us with water
                             overflow = true;
                             break;
                         }
-                    } else if grid[y + 1][*z] == b'|' {
+                    } else if grid[yi + width + *z] == b'|' {
                         // We hit a pipe coming from above. This is also an overflow.
                         overflow = true;
                         break;
@@ -56,24 +65,24 @@ fn drop(grid: &mut [Vec<u8>], x: usize, start_y: usize, water: &mut usize, pipes
             }
 
             if overflow {
-                // either the left or right has has overflown
-                if grid[y][left_x] == b'|' {
+                // either the left or right has overflown
+                if grid[yi + left_x] == b'|' {
                     // We hit a pipe coming from above. Don't count it twice.
                     left_x += 1;
                 }
-                if grid[y][right_x] == b'|' {
+                if grid[yi + right_x] == b'|' {
                     // We hit a pipe coming from above. Don't count it twice.
                     right_x -= 1;
                 }
 
                 // fill horizontal cells with pipes
-                grid[y][left_x..=right_x].fill(b'|');
+                grid[yi + left_x..=yi + right_x].fill(b'|');
                 *pipes += right_x - left_x + 1;
                 break;
             }
 
             // we found a left and right border - fill this row with water
-            grid[y][left_x..=right_x].fill(b'~');
+            grid[yi + left_x..=yi + right_x].fill(b'~');
             *water += right_x - left_x + 1;
 
             // continue one row higher
@@ -86,7 +95,7 @@ fn drop(grid: &mut [Vec<u8>], x: usize, start_y: usize, water: &mut usize, pipes
         *pipes += y - start_y;
         y -= 1;
         while y > 0 && y >= start_y {
-            grid[y][x] = b'|';
+            grid[y * width + x] = b'|';
             y -= 1;
         }
     }
@@ -128,17 +137,20 @@ fn main() {
         }
     }
 
-    let mut grid = vec![vec![b'.'; max_x - min_x + 1]; max_y - min_y + 1];
+    let width = max_x - min_x + 1;
+    let height = max_y - min_y + 1;
+    let mut grid = vec![b'.'; width * height];
 
     for c in coords {
         match c {
             Line::Horizontal { y, x } => {
-                grid[y - min_y][x.0 - min_x..=x.1 - min_x].fill(b'#');
+                let yi = (y - min_y) * width;
+                grid[yi + x.0 - min_x..=yi + x.1 - min_x].fill(b'#');
             }
             Line::Vertical { x, y } => {
                 let x = x - min_x;
-                for row in &mut grid[y.0 - min_y..=y.1 - min_y] {
-                    row[x] = b'#';
+                for i in ((y.0 - min_y) * width + x..(y.1 - min_y) * width + x).step_by(width) {
+                    grid[i] = b'#';
                 }
             }
         }
@@ -146,7 +158,15 @@ fn main() {
 
     let mut water = 0;
     let mut pipes = 0;
-    drop(&mut grid, 500 - min_x, 0, &mut water, &mut pipes);
+    drop(
+        &mut grid,
+        width,
+        height,
+        500 - min_x,
+        0,
+        &mut water,
+        &mut pipes,
+    );
 
     // part 1
     println!("{}", water + pipes);
