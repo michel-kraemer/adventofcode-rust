@@ -1,7 +1,5 @@
 use std::fs;
 
-use rustc_hash::{FxHashMap, FxHashSet};
-
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 enum Opcode {
     Addr,
@@ -152,43 +150,42 @@ fn main() {
     // part 1
     println!("{total1}");
 
-    // assign an index to each opcode and candidates to HashSets
+    // assign an index to each opcode and convert candidates to bit masks
+    // it's faster to do it here than already at the beginning
     let mut opcodes = opcodes
         .into_iter()
         .map(|os| {
-            os.iter()
-                .enumerate()
-                .filter_map(|(i, b)| if *b { Some(ALL_OPCODES[i]) } else { None })
-                .collect::<FxHashSet<_>>()
+            let mut mask = 0;
+            for (i, o) in os.iter().enumerate() {
+                mask |= (*o as u16) << ALL_OPCODES[i] as u32;
+            }
+            mask
         })
         .enumerate()
         .collect::<Vec<_>>();
 
     // find opcodes where we know exactly what they are (i.e. that have exactly
     // one candidate)
-    let mut good_opcodes = opcodes
-        .iter()
-        .filter_map(|(i, o)| {
-            if o.len() == 1 {
-                Some((*i, *o.iter().next().unwrap()))
-            } else {
-                None
-            }
-        })
-        .collect::<FxHashMap<_, _>>();
+    let mut good_opcodes_found = 0;
+    let mut good_opcodes = [Opcode::Addi; 16];
+    for (i, o) in &opcodes {
+        if o.count_ones() == 1 {
+            good_opcodes[*i] = ALL_OPCODES[o.trailing_zeros() as usize];
+            good_opcodes_found |= o;
+        }
+    }
 
-    opcodes.retain(|(_, o)| o.len() > 1);
+    opcodes.retain(|(_, o)| o.count_ones() > 1);
 
     // iteratively remove candidates until all opcodes have been determined
     while !opcodes.is_empty() {
         let mut oi = 0;
         while oi < opcodes.len() {
             let o = &mut opcodes[oi];
-            for go in good_opcodes.values() {
-                o.1.remove(go);
-            }
-            if o.1.len() == 1 {
-                good_opcodes.insert(o.0, *o.1.iter().next().unwrap());
+            o.1 &= !good_opcodes_found;
+            if o.1.count_ones() == 1 {
+                good_opcodes[o.0] = ALL_OPCODES[o.1.trailing_zeros() as usize];
+                good_opcodes_found |= o.1;
                 opcodes.swap_remove(oi);
             } else {
                 oi += 1;
@@ -203,7 +200,7 @@ fn main() {
     let mut registers = [0; 4];
     while sl.peek().is_some() {
         let instr = parse_instruction(&mut sl);
-        let opcode = good_opcodes[&instr[0]];
+        let opcode = good_opcodes[instr[0]];
         apply(opcode, &instr, &mut registers);
     }
 
