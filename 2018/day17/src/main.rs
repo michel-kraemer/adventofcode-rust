@@ -32,43 +32,26 @@ fn drop(grid: &mut [Vec<u8>], x: usize, start_y: usize, water: &mut usize, pipes
         while y >= start_y {
             let mut overflow = false;
 
-            // find left border
+            // find left and right borders
             let mut left_x = x;
-            while left_x > 0 && grid[y][left_x - 1] != b'#' {
-                left_x -= 1;
-                if grid[y + 1][left_x] == b'.' {
-                    // Overflow. Drop down.
-                    drop(grid, left_x, y + 1, water, pipes);
-                    if grid[y + 1][left_x] != b'~' {
-                        // it's only really an overflow if we've not filled
-                        // everything below us with water
-                        overflow = true;
-                        break;
-                    }
-                } else if grid[y + 1][left_x] == b'|' {
-                    // We hit a pipe coming from above. This is also an overflow.
-                    overflow = true;
-                    break;
-                }
-            }
-
-            // find right border
             let mut right_x = x;
-            while right_x < grid[y].len() - 1 && grid[y][right_x + 1] != b'#' {
-                right_x += 1;
-                if grid[y + 1][right_x] == b'.' {
-                    // Overflow. Drop down.
-                    drop(grid, right_x, y + 1, water, pipes);
-                    if grid[y + 1][right_x] != b'~' {
-                        // it's only really an overflow if we've not filled
-                        // everything below us with water
+            for (z, dz, e) in [(&mut left_x, -1, 0), (&mut right_x, 1, grid[y].len())] {
+                while *z != e && grid[y][z.wrapping_add_signed(dz)] != b'#' {
+                    *z = z.wrapping_add_signed(dz);
+                    if grid[y + 1][*z] == b'.' {
+                        // Overflow. Drop down.
+                        drop(grid, *z, y + 1, water, pipes);
+                        if grid[y + 1][*z] != b'~' {
+                            // it's only really an overflow if we've not filled
+                            // everything below us with water
+                            overflow = true;
+                            break;
+                        }
+                    } else if grid[y + 1][*z] == b'|' {
+                        // We hit a pipe coming from above. This is also an overflow.
                         overflow = true;
                         break;
                     }
-                } else if grid[y + 1][right_x] == b'|' {
-                    // We hit a pipe coming from above. This is also an overflow.
-                    overflow = true;
-                    break;
                 }
             }
 
