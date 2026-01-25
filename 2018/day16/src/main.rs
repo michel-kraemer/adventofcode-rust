@@ -39,13 +39,13 @@ const ALL_OPCODES: [Opcode; 16] = [
     Opcode::Eqrr,
 ];
 
-fn apply(i: Opcode, instr: &[usize; 4], registers: &mut [usize; 4]) {
+fn apply(i: Opcode, instr: &[usize; 4], registers: &[usize; 4]) -> usize {
     use Opcode::*;
 
     let a = instr[1];
     let b = instr[2];
 
-    registers[instr[3]] = match i {
+    match i {
         Addr => registers[a] + registers[b],
         Addi => registers[a] + b,
         Mulr => registers[a] * registers[b],
@@ -62,7 +62,7 @@ fn apply(i: Opcode, instr: &[usize; 4], registers: &mut [usize; 4]) {
         Eqir => (a == registers[b]) as usize,
         Eqri => (registers[a] == b) as usize,
         Eqrr => (registers[a] == registers[b]) as usize,
-    };
+    }
 }
 
 /// This is much faster than using split_ascii_whitespace() and then parse()
@@ -130,16 +130,13 @@ fn main() {
         }
 
         let mut matches = 0;
-        let mut result = registers_before;
+        let expected = registers_after[instr[3]];
         for &i in &ALL_OPCODES {
-            apply(i, &instr, &mut result);
-            let out = instr[3];
-            if result[out] == registers_after[out] {
+            if apply(i, &instr, &registers_before) == expected {
                 matches += 1;
             } else {
                 opcodes[instr[0]][i as usize] = false;
             }
-            result[out] = registers_before[out];
         }
 
         if matches >= 3 {
@@ -201,7 +198,7 @@ fn main() {
     while sl.peek().is_some() {
         let instr = parse_instruction(&mut sl);
         let opcode = good_opcodes[instr[0]];
-        apply(opcode, &instr, &mut registers);
+        registers[instr[3]] = apply(opcode, &instr, &registers);
     }
 
     // part 2
