@@ -58,7 +58,7 @@ impl Pots {
         let len = (self.prev_state.len() - 1) * 64
             + (64 - self.prev_state[self.prev_state.len() - 1].leading_zeros() as usize);
 
-        // apply rules and built up new state
+        // apply rules and build up new state
         while i < len {
             let q = i / 64;
             let r = i % 64;
