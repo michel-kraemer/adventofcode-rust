@@ -1,6 +1,8 @@
 use std::fs;
 
 use rustc_hash::FxHashMap;
+#[cfg(feature = "visualize")]
+use screen::Screen;
 
 const OPEN: u64 = 0b00;
 const TREES: u64 = 0b01;
@@ -33,6 +35,28 @@ fn update(a: u64, b: u64, c: u64, g: u64, ng: &mut u64, sh: usize) {
     } else if contents == LUMBERYARDS && lumberyards > 0 && trees > 0 {
         *ng |= LUMBERYARDS << sh;
     }
+}
+
+#[cfg(feature = "visualize")]
+fn visualize(grid: &[(u64, u64)], width: usize, half: usize, screen: &mut Screen) {
+    let mut new_grid = vec![(' ', (0, 0, 0)); width * grid.len() - 2];
+    for (row, (word1, word2)) in grid.iter().skip(1).take(grid.len() - 2).enumerate() {
+        let mut col = 0;
+        for (w, l) in [(word1, half), (word2, width - half)] {
+            let mut i = 2;
+            while i < (l + 1) * 2 {
+                let bits = (w >> i) & MASK_T;
+                new_grid[row * width + col] = match bits {
+                    TREES => ('█', (14, 200, 0)),
+                    LUMBERYARDS => ('▒', (9, 120, 0)),
+                    _ => ('░', (5, 65, 0)),
+                };
+                i += 2;
+                col += 1;
+            }
+        }
+    }
+    screen.update_with_colors(new_grid);
 }
 
 fn main() {
@@ -70,12 +94,23 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
+    // add empty rows at the beginning and the end to make it easier to count
+    // bits
     grid.insert(0, (0, 0));
     grid.push((0, 0));
 
     for part1 in [true, false] {
         let mut grid = grid.clone();
         let max_steps = if part1 { 10 } else { 1_000_000_000 };
+
+        #[cfg(feature = "visualize")]
+        let mut screen = if !part1 {
+            let mut screen = Screen::new(width, grid.len() - 2, 20);
+            visualize(&grid, width, half, &mut screen);
+            Some(screen)
+        } else {
+            None
+        };
 
         let mut seen = FxHashMap::default();
         seen.insert(grid.clone(), 0);
@@ -155,7 +190,15 @@ fn main() {
             } else {
                 seen.insert(grid.clone(), step);
             }
+
+            #[cfg(feature = "visualize")]
+            if let Some(screen) = &mut screen {
+                visualize(&grid, width, half, screen);
+            }
         }
+
+        #[cfg(feature = "visualize")]
+        drop(screen);
 
         // count trees and lumberyards
         let mut trees = 0;

@@ -68,15 +68,19 @@ I've created terminal visualizations of some puzzles for fun:
       <a href="2019/day13/src/main.rs">2019 - Day 13:<br>Care Package</a>
     </td>
     <td align="center">
+      <a href="2018/day18/aoc_2018_day18.webp"><img src="2018/day18/aoc_2018_day18_mini.webp" height="200px" /></a><br />
+      <a href="2018/day18/src/main.rs">2018 - Day 18:<br>Settlers of The North Pole</a>
+    </td>
+    <td align="center">
       <a href="2017/day22/aoc_2017_day22.webp"><img src="2017/day22/aoc_2017_day22_mini.webp" height="200px" /></a><br />
       <a href="2017/day22/src/main.rs">2017 - Day 22:<br>Sporifica Virus</a>
     </td>
+  </tr>
+  <tr>
     <td align="center">
       <a href="2016/day22/aoc_2016_day22.gif"><img src="2016/day22/aoc_2016_day22_mini.webp" height="200px" /></a><br />
       <a href="2016/day22/src/main.rs">2016 - Day 22:<br>Grid Computing</a>
     </td>
-  </tr>
-  <tr>
     <td align="center">
       <a href="2016/day08/aoc_2016_day08_mini.gif"><img src="2016/day08/aoc_2016_day08_mini.webp" width="200px" /></a><br />
       <a href="2016/day08/src/main.rs">2016 - Day 8:<br>Two-Factor Authentication</a>
