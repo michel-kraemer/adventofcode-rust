@@ -47,7 +47,7 @@ fn run(
     program: &[(Opcode, usize, usize, usize)],
     max_steps: usize,
     pointer_register: usize,
-    registers: &mut [usize],
+    registers: &mut [usize; 6],
 ) {
     let mut pointer = 0;
     let mut steps = 0;
@@ -66,7 +66,31 @@ fn run(
     }
 }
 
+fn divisor_sum(val: usize) -> usize {
+    let mut cur = 1;
+    let mut result = 0;
+    while cur * cur <= val {
+        if val.is_multiple_of(cur) {
+            if val / cur == cur {
+                // perfect square
+                result += cur;
+                cur += 1;
+            } else {
+                // all divisors greater than 1 come in pairs
+                // (e.g. 6 / 2 == 3 and 6 / 3 == 2)
+                result += cur;
+                result += val / cur;
+            }
+        }
+        cur += 1;
+    }
+    result
+}
+
 fn main() {
+    // We basically implement what the program does in Rust: Look for all
+    // divisors of registers[4] and sum them up
+
     use Opcode::*;
 
     // parse
@@ -79,7 +103,7 @@ fn main() {
                 pointer_register = l[4..].parse::<usize>().unwrap();
                 None
             } else {
-                let p = l.split_whitespace().collect::<Vec<_>>();
+                let p = l.split_ascii_whitespace().collect::<Vec<_>>();
                 let opcode = match p[0] {
                     "addr" => Addr,
                     "addi" => Addi,
@@ -109,22 +133,15 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    // part 1
-    let mut registers = vec![0; 6];
-    run(&program, usize::MAX, pointer_register, &mut registers);
-    println!("{}", registers[0]);
+    // part 1 ...
+    // let the program run for a while to get the value of register[4]
+    let mut registers = [0; 6];
+    run(&program, 75, pointer_register, &mut registers);
+    println!("{}", divisor_sum(registers[4]));
 
     // part 2 ...
-
-    // let the program run for a while, so we get the value of register[4]
-    let mut registers = vec![0; 6];
+    let mut registers = [0; 6];
     registers[0] = 1;
-    run(&program, 100, pointer_register, &mut registers);
-
-    // this is basically what the program does:
-    // look for all factors of registers[4] and sum them up
-    let sum = (1..=registers[4])
-        .filter(|&i| registers[4].is_multiple_of(i))
-        .sum::<usize>();
-    println!("{}", sum);
+    run(&program, 75, pointer_register, &mut registers);
+    println!("{}", divisor_sum(registers[4]));
 }
