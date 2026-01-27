@@ -2,7 +2,6 @@ use std::fs;
 
 use rustc_hash::FxHashMap;
 
-const HALF: usize = 31;
 const OPEN: u64 = 0b00;
 const TREES: u64 = 0b01;
 const LUMBERYARDS: u64 = 0b10;
@@ -22,16 +21,16 @@ fn update(a: u64, b: u64, c: u64, g: u64, ng: &mut u64, sh: usize) {
         + (b & MASK_LUMBERYARDS).count_ones()
         + (c & MASK_LUMBERYARDS).count_ones();
 
-    let c = (g >> sh) & MASK_T;
-    if c == OPEN && trees >= 3 {
+    let contents = (g >> sh) & MASK_T;
+    if contents == OPEN && trees >= 3 {
         *ng |= TREES << sh;
-    } else if c == TREES {
+    } else if contents == TREES {
         if lumberyards >= 3 {
             *ng |= LUMBERYARDS << sh;
         } else {
             *ng |= TREES << sh;
         }
-    } else if c == LUMBERYARDS && lumberyards > 0 && trees > 0 {
+    } else if contents == LUMBERYARDS && lumberyards > 0 && trees > 0 {
         *ng |= LUMBERYARDS << sh;
     }
 }
@@ -39,6 +38,7 @@ fn update(a: u64, b: u64, c: u64, g: u64, ng: &mut u64, sh: usize) {
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
     let mut width = 0;
+    let mut half = 0;
     let mut grid = input
         .lines()
         .map(|l| {
@@ -49,16 +49,21 @@ fn main() {
             let mut word1: u64 = 0;
             let mut word2: u64 = 0;
             width = l.len();
+            assert!(
+                width <= 62,
+                "This solution only works for grids with a maximum width of 62 bytes"
+            );
+            half = width / 2;
             for (i, b) in l.bytes().enumerate() {
                 let bits = match b {
                     b'|' => TREES,
                     b'#' => LUMBERYARDS,
                     _ => OPEN,
                 };
-                if i < HALF {
+                if i < half {
                     word1 |= bits << (i * 2 + 2);
                 } else {
-                    word2 |= bits << ((i - HALF) * 2 + 2);
+                    word2 |= bits << ((i - half) * 2 + 2);
                 }
             }
             (word1, word2)
@@ -81,50 +86,63 @@ fn main() {
             new_grid.fill((0, 0));
 
             for (y, g) in grid.windows(3).enumerate() {
+                let prev1 = g[0].0;
+                let curr1 = g[1].0;
+                let next1 = g[2].0;
+
+                let prev2 = g[0].1;
+                let curr2 = g[1].1;
+                let next2 = g[2].1;
+
+                let mut ng1 = 0;
+                let mut ng2 = 0;
+
                 // process pairs of bits in first word (except for the last
                 // pair)
-                for x in 1..HALF {
+                for x in 1..half {
                     let x = x * 2;
                     let (a, b, c) = (
-                        (g[0].0 >> (x - 2)) & MASK_TTT,
-                        (g[1].0 >> (x - 2)) & MASK_TFT,
-                        (g[2].0 >> (x - 2)) & MASK_TTT,
+                        (prev1 >> (x - 2)) & MASK_TTT,
+                        (curr1 >> (x - 2)) & MASK_TFT,
+                        (next1 >> (x - 2)) & MASK_TTT,
                     );
-                    update(a, b, c, g[1].0, &mut new_grid[y + 1].0, x);
+                    update(a, b, c, curr1, &mut ng1, x);
                 }
 
                 // process last pair of bits in first word - also count first
                 // pair of bits of second word
                 let (mut a, mut b, mut c) = (
-                    (g[0].0 >> ((HALF - 1) * 2)) & MASK_TTT,
-                    (g[1].0 >> ((HALF - 1) * 2)) & MASK_TFT,
-                    (g[2].0 >> ((HALF - 1) * 2)) & MASK_TTT,
+                    (prev1 >> ((half - 1) * 2)) & MASK_TTT,
+                    (curr1 >> ((half - 1) * 2)) & MASK_TFT,
+                    (next1 >> ((half - 1) * 2)) & MASK_TTT,
                 );
-                a |= ((g[0].1 >> 2) & MASK_T) << 4;
-                b |= ((g[1].1 >> 2) & MASK_T) << 4;
-                c |= ((g[2].1 >> 2) & MASK_T) << 4;
-                update(a, b, c, g[1].0, &mut new_grid[y + 1].0, HALF * 2);
+                a |= ((prev2 >> 2) & MASK_T) << 4;
+                b |= ((curr2 >> 2) & MASK_T) << 4;
+                c |= ((next2 >> 2) & MASK_T) << 4;
+                update(a, b, c, curr1, &mut ng1, half * 2);
 
                 // process first pair of bits in second pair - also count last
                 // pair of bits of first word
-                let (mut a, mut b, mut c) =
-                    (g[0].1 & MASK_TTT, g[1].1 & MASK_TFT, g[2].1 & MASK_TTT);
-                a |= g[0].0 >> (HALF * 2);
-                b |= g[1].0 >> (HALF * 2);
-                c |= g[2].0 >> (HALF * 2);
-                update(a, b, c, g[1].1, &mut new_grid[y + 1].1, 2);
+                let (mut a, mut b, mut c) = (prev2 & MASK_TTT, curr2 & MASK_TFT, next2 & MASK_TTT);
+                a |= prev1 >> (half * 2);
+                b |= curr1 >> (half * 2);
+                c |= next1 >> (half * 2);
+                update(a, b, c, curr2, &mut ng2, 2);
 
                 // process pairs of bits in second word (except for the first
                 // pair)
-                for x in HALF + 2..=width {
-                    let x = (x - HALF) * 2;
+                for x in half + 2..=width {
+                    let x = (x - half) * 2;
                     let (a, b, c) = (
-                        (g[0].1 >> (x - 2)) & MASK_TTT,
-                        (g[1].1 >> (x - 2)) & MASK_TFT,
-                        (g[2].1 >> (x - 2)) & MASK_TTT,
+                        (prev2 >> (x - 2)) & MASK_TTT,
+                        (curr2 >> (x - 2)) & MASK_TFT,
+                        (next2 >> (x - 2)) & MASK_TTT,
                     );
-                    update(a, b, c, g[1].1, &mut new_grid[y + 1].1, x);
+                    update(a, b, c, curr2, &mut ng2, x);
                 }
+
+                new_grid[y + 1].0 = ng1;
+                new_grid[y + 1].1 = ng2;
             }
 
             (grid, new_grid) = (new_grid, grid);
@@ -143,7 +161,7 @@ fn main() {
         let mut trees = 0;
         let mut lumberyards = 0;
         for (word1, word2) in grid.iter().skip(1).take(grid.len() - 2) {
-            for (w, l) in [(word1, HALF), (word2, width - HALF)] {
+            for (w, l) in [(word1, half), (word2, width - half)] {
                 let mut i = 2;
                 while i < (l + 1) * 2 {
                     let bits = (w >> i) & MASK_T;
