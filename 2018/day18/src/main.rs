@@ -6,34 +6,34 @@ use screen::Screen;
 
 const OPEN: u64 = 0b00;
 const TREES: u64 = 0b01;
-const LUMBERYARDS: u64 = 0b10;
+const LUMBERYARD: u64 = 0b10;
 
 const MASK_T: u64 = 0b11;
 const MASK_TTT: u64 = 0b111111;
 const MASK_TFT: u64 = 0b110011;
 
 const MASK_TREES: u64 = TREES << 4 | TREES << 2 | TREES;
-const MASK_LUMBERYARDS: u64 = LUMBERYARDS << 4 | LUMBERYARDS << 2 | LUMBERYARDS;
+const MASK_LUMBERYARD: u64 = LUMBERYARD << 4 | LUMBERYARD << 2 | LUMBERYARD;
 
 fn update(a: u64, b: u64, c: u64, g: u64, ng: &mut u64, sh: usize) {
     let trees = (a & MASK_TREES).count_ones()
         + (b & MASK_TREES).count_ones()
         + (c & MASK_TREES).count_ones();
-    let lumberyards = (a & MASK_LUMBERYARDS).count_ones()
-        + (b & MASK_LUMBERYARDS).count_ones()
-        + (c & MASK_LUMBERYARDS).count_ones();
+    let lumberyards = (a & MASK_LUMBERYARD).count_ones()
+        + (b & MASK_LUMBERYARD).count_ones()
+        + (c & MASK_LUMBERYARD).count_ones();
 
     let contents = (g >> sh) & MASK_T;
-    if contents == OPEN && trees >= 3 {
-        *ng |= TREES << sh;
-    } else if contents == TREES {
-        if lumberyards >= 3 {
-            *ng |= LUMBERYARDS << sh;
-        } else {
+    if contents == OPEN {
+        if trees >= 3 {
             *ng |= TREES << sh;
         }
-    } else if contents == LUMBERYARDS && lumberyards > 0 && trees > 0 {
-        *ng |= LUMBERYARDS << sh;
+    } else if contents == TREES {
+        if lumberyards >= 3 {
+            *ng ^= MASK_T << sh; // convert TREE to LUMBERYARD
+        }
+    } else if contents == LUMBERYARD && (lumberyards == 0 || trees == 0) {
+        *ng &= !(LUMBERYARD << sh);
     }
 }
 
@@ -48,7 +48,7 @@ fn visualize(grid: &[(u64, u64)], width: usize, half: usize, screen: &mut Screen
                 let bits = (w >> i) & MASK_T;
                 new_grid[row * width + col] = match bits {
                     TREES => ('█', (14, 200, 0)),
-                    LUMBERYARDS => ('▒', (9, 120, 0)),
+                    LUMBERYARD => ('▒', (9, 120, 0)),
                     _ => ('░', (5, 65, 0)),
                 };
                 i += 2;
@@ -81,7 +81,7 @@ fn main() {
             for (i, b) in l.bytes().enumerate() {
                 let bits = match b {
                     b'|' => TREES,
-                    b'#' => LUMBERYARDS,
+                    b'#' => LUMBERYARD,
                     _ => OPEN,
                 };
                 if i < half {
@@ -115,11 +115,9 @@ fn main() {
         let mut seen = FxHashMap::default();
         seen.insert(grid.clone(), 0);
 
-        let mut new_grid = vec![(0, 0); grid.len()];
+        let mut new_grid = grid.clone();
         let mut step = 0;
         while step < max_steps {
-            new_grid.fill((0, 0));
-
             for (y, g) in grid.windows(3).enumerate() {
                 let prev1 = g[0].0;
                 let curr1 = g[1].0;
@@ -129,8 +127,8 @@ fn main() {
                 let curr2 = g[1].1;
                 let next2 = g[2].1;
 
-                let mut ng1 = 0;
-                let mut ng2 = 0;
+                let mut ng1 = curr1;
+                let mut ng2 = curr2;
 
                 // process pairs of bits in first word (except for the last
                 // pair)
@@ -210,7 +208,7 @@ fn main() {
                     let bits = (w >> i) & MASK_T;
                     match bits {
                         TREES => trees += 1,
-                        LUMBERYARDS => lumberyards += 1,
+                        LUMBERYARD => lumberyards += 1,
                         _ => {}
                     }
                     i += 2;
