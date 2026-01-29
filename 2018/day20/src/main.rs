@@ -1,167 +1,158 @@
-use std::{
-    cmp::Reverse,
-    collections::{BinaryHeap, HashMap, HashSet, VecDeque},
-    fs,
-};
+use std::{collections::VecDeque, fs, str::Bytes};
 
-#[derive(Clone, PartialEq, Eq, Hash)]
-struct State {
+use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
+
+fn dfs(
+    input: &[u8],
     i: usize,
-    x: i32,
-    y: i32,
-}
+    start_x: i32,
+    start_y: i32,
+    seen: &mut FxHashSet<(usize, i32, i32)>,
+    graph: &mut FxHashMap<(i32, i32), Vec<(i32, i32)>>,
+) -> Vec<(usize, i32, i32)> {
+    let mut result: Vec<(usize, i32, i32)> = Vec::new();
 
-impl Ord for State {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.i.cmp(&other.i)
-    }
-}
+    let mut queue = Vec::new();
+    queue.push((i, start_x, start_y));
 
-impl PartialOrd for State {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-fn main() {
-    let regex = fs::read_to_string("input.txt")
-        .expect("Could not read file")
-        .trim()
-        .chars()
-        .collect::<Vec<_>>();
-
-    // create a map (i.e. a bi-directional graph of rooms and their neighbors)
-    let mut rooms: HashMap<(i32, i32), HashSet<(i32, i32)>> = HashMap::new();
-
-    let mut queue = VecDeque::new();
-    let mut seen = HashSet::new();
-
-    let initial = State { i: 0, x: 0, y: 0 };
-    seen.insert(initial.clone());
-    queue.push_back(initial);
-
-    while !queue.is_empty() {
-        let mut s = queue.pop_front().unwrap();
-        while s.i < regex.len() {
-            match regex[s.i] {
-                // skip characters that don't give us any information
-                '^' | '$' | ')' => {
-                    s.i += 1;
-                }
-
-                // visit next room north, south, west, or east and add
-                // door between current room and next one
-                'N' => {
-                    rooms.entry((s.x, s.y)).or_default().insert((s.x, s.y - 1));
-                    rooms.entry((s.x, s.y - 1)).or_default().insert((s.x, s.y));
-                    s.i += 1;
-                    s.y -= 1;
-                }
-                'S' => {
-                    rooms.entry((s.x, s.y)).or_default().insert((s.x, s.y + 1));
-                    rooms.entry((s.x, s.y + 1)).or_default().insert((s.x, s.y));
-                    s.i += 1;
-                    s.y += 1;
-                }
-                'W' => {
-                    rooms.entry((s.x, s.y)).or_default().insert((s.x - 1, s.y));
-                    rooms.entry((s.x - 1, s.y)).or_default().insert((s.x, s.y));
-                    s.i += 1;
-                    s.x -= 1;
-                }
-                'E' => {
-                    rooms.entry((s.x, s.y)).or_default().insert((s.x + 1, s.y));
-                    rooms.entry((s.x + 1, s.y)).or_default().insert((s.x, s.y));
-                    s.i += 1;
-                    s.x += 1;
-                }
-
-                // this is a junction: look for '|' characters at the same
-                // level and insert new starting points into the queue
-                '(' => {
-                    let mut level = 0;
-                    let mut j = s.i;
-                    loop {
-                        match regex[j] {
-                            '(' => level += 1,
-                            '|' => {
-                                if level == 1 {
-                                    let ns = State {
-                                        i: j + 1,
-                                        x: s.x,
-                                        y: s.y,
-                                    };
-                                    if !seen.contains(&ns) {
-                                        seen.insert(ns.clone());
-                                        queue.push_back(ns);
-                                    }
-                                }
-                            }
-                            ')' => {
-                                level -= 1;
-                                if level == 0 {
-                                    break;
-                                }
-                            }
-                            _ => {}
-                        }
-                        j += 1;
-                    }
-                    s.i += 1;
-                }
-
-                // skip everything after the '|' character until the end of
-                // the junction at the current level
-                '|' => {
-                    let mut level = 1;
-                    let mut j = s.i;
-                    loop {
-                        match regex[j] {
-                            '(' => level += 1,
-                            ')' => {
-                                level -= 1;
-                                if level == 0 {
-                                    break;
-                                }
-                            }
-                            _ => {}
-                        }
-                        j += 1;
-                    }
-                    s.i = j + 1;
-                }
-
-                _ => panic!(),
+    let mut options_end = 0;
+    while let Some((mut i, mut x, mut y)) = queue.pop() {
+        while i < input.len() {
+            if !seen.insert((i, x, y)) {
+                break;
             }
+            match input[i] {
+                b'N' => {
+                    let a = (x, y);
+                    y -= 1;
+                    let b = (x, y);
+                    graph.entry(a).or_default().push(b);
+                    graph.entry(b).or_default().push(a);
+                }
+                b'S' => {
+                    let a = (x, y);
+                    y += 1;
+                    let b = (x, y);
+                    graph.entry(a).or_default().push(b);
+                    graph.entry(b).or_default().push(a);
+                }
+                b'W' => {
+                    let a = (x, y);
+                    x -= 1;
+                    let b = (x, y);
+                    graph.entry(a).or_default().push(b);
+                    graph.entry(b).or_default().push(a);
+                }
+                b'E' => {
+                    let a = (x, y);
+                    x += 1;
+                    let b = (x, y);
+                    graph.entry(a).or_default().push(b);
+                    graph.entry(b).or_default().push(a);
+                }
+                b'(' => {
+                    queue.extend(&dfs(input, i + 1, x, y, seen, graph));
+                    break;
+                }
+                b')' => {
+                    options_end = i;
+                    result.push((usize::MAX, x, y));
+                    break;
+                }
+                b'|' => {
+                    result.push((usize::MAX, x, y));
+                    x = start_x;
+                    y = start_y;
+                }
+                _ => {}
+            }
+            i += 1;
         }
     }
 
-    // perform BFS and record number of steps for each room seen
-    let mut queue = BinaryHeap::new();
-    queue.push(Reverse(State { i: 1, x: 0, y: 0 }));
+    for r in result.iter_mut() {
+        r.0 = options_end + 1;
+    }
 
-    let mut seen = HashMap::new();
-    seen.insert((0, 0), 1);
+    result
+}
 
-    while !queue.is_empty() {
-        let s = queue.pop().unwrap().0;
-        if let Some(next) = rooms.get(&(s.x, s.y)) {
-            for c in next {
-                seen.entry((c.0, c.1)).or_insert_with(|| {
-                    queue.push(Reverse(State {
-                        i: s.i + 1,
-                        x: c.0,
-                        y: c.1,
-                    }));
-                    s.i
-                });
+/// Fast alternative solution that makes use of the fact that the input is
+/// structured in a very specific way: whenever a list of options ends, we can
+/// assume that we are back where we were when the list of options started. This
+/// most likely applies to all official AoC inputs for this puzzle. However,
+/// since I prefer generic approaches, I disabled this code in favour of a
+/// slower solution that works with every input.
+#[allow(unused)]
+fn dfs_fast(
+    input: &mut Bytes,
+    mut x: i32,
+    mut y: i32,
+    mut steps: usize,
+    map: &mut FxHashMap<(i32, i32), usize>,
+) -> bool {
+    while let Some(c) = input.next() {
+        map.entry((x, y))
+            .and_modify(|old| *old = steps.min(*old))
+            .or_insert(steps);
+        match c {
+            b'N' => {
+                y -= 1;
+                steps += 1;
+            }
+            b'S' => {
+                y += 1;
+                steps += 1;
+            }
+            b'W' => {
+                x -= 1;
+                steps += 1;
+            }
+            b'E' => {
+                x += 1;
+                steps += 1;
+            }
+            b'(' => while dfs_fast(input, x, y, steps, map) {},
+            b'|' => return true,
+            _ => return false,
+        }
+    }
+    true
+}
+
+fn main() {
+    let input = fs::read_to_string("input.txt").expect("Could not read file");
+    let input = input[1..].trim().as_bytes();
+
+    // Create a map (i.e. an undirected graph of rooms and their neighbors).
+    // Note that the values are Vecs instead of HashSets. We don't care about
+    // duplicate edges. They will be filtered out later during the BFS anyhow.
+    let mut graph: FxHashMap<(i32, i32), Vec<(i32, i32)>> = FxHashMap::default();
+    dfs(input, 0, 0, 0, &mut FxHashSet::default(), &mut graph);
+
+    // perform BFS and record the minimum number of steps required to reach each
+    // room
+    let mut queue = VecDeque::new();
+    queue.push_back((0, 0, 0));
+
+    let mut best = FxHashMap::with_capacity_and_hasher(graph.len(), FxBuildHasher);
+    best.insert((0, 0), 0);
+
+    while let Some((steps, x, y)) = queue.pop_front() {
+        if let Some(neighbors) = graph.get(&(x, y)) {
+            for &(cx, cy) in neighbors {
+                let old = *best.get(&(cx, cy)).unwrap_or(&usize::MAX);
+                if steps + 1 < old {
+                    best.insert((cx, cy), steps + 1);
+                    queue.push_back((steps + 1, cx, cy));
+                }
             }
         }
     }
 
     // part 1
-    println!("{}", seen.iter().map(|s| s.1).max().unwrap());
+    println!("{}", best.values().max().unwrap());
 
     // part 2
-    println!("{}", seen.iter().filter(|s| *s.1 >= 1000).count());
+    println!("{}", best.values().filter(|v| **v >= 1000).count());
 }
