@@ -1,4 +1,10 @@
 [package]
 name = "day21"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+
+[features]
+brute-force = []
+
+[dependencies]
+rustc-hash = "2.1.1"

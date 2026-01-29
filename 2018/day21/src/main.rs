@@ -1,8 +1,6 @@
-use std::{
-    collections::hash_map::Entry::Vacant,
-    collections::{HashMap, HashSet},
-    env, fs,
-};
+use std::{collections::hash_map::Entry::Vacant, fs};
+
+use rustc_hash::{FxHashMap, FxHashSet};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Opcode {
@@ -52,7 +50,7 @@ fn run(
     pointer_register: usize,
     registers: &mut [usize],
 ) {
-    let mut seen = HashMap::new();
+    let mut seen = FxHashMap::default();
     let mut pointer = 0;
     let mut steps = 0u64;
     while pointer < program.len() {
@@ -98,7 +96,7 @@ fn main() {
                 pointer_register = l[4..].parse::<usize>().unwrap();
                 None
             } else {
-                let p = l.split_whitespace().collect::<Vec<_>>();
+                let p = l.split_ascii_whitespace().collect::<Vec<_>>();
                 let opcode = match p[0] {
                     "addr" => Addr,
                     "addi" => Addi,
@@ -129,7 +127,7 @@ fn main() {
         .collect::<Vec<_>>();
 
     // Brute-force solution. Takes about 12 seconds on my computer for my input
-    if env::var("AOC_DAY21_BRUTE_FORCE").is_ok() {
+    if cfg!(feature = "brute-force") {
         let mut registers = vec![0; 6];
         registers[0] = 0;
         run(&program, pointer_register, &mut registers);
@@ -137,8 +135,9 @@ fn main() {
         // program translated to Rust and simplified/optimized
         let seed = program[7].1;
 
-        let mut seen = HashSet::new();
-        let mut generated_numbers = Vec::new();
+        let mut seen = FxHashSet::default();
+        let mut first_number = None;
+        let mut last_number = 0;
         let mut b = 65536;
         let mut c = seed;
         loop {
@@ -151,7 +150,10 @@ fn main() {
                 if seen.contains(&c) {
                     break;
                 }
-                generated_numbers.push(c);
+                if first_number.is_none() {
+                    first_number = Some(c);
+                }
+                last_number = c;
                 seen.insert(c);
                 b = c | 65536;
                 c = seed;
@@ -161,9 +163,9 @@ fn main() {
         }
 
         // part 1
-        println!("{}", generated_numbers[0]);
+        println!("{}", first_number.unwrap());
 
         // part 2
-        println!("{}", generated_numbers.last().unwrap());
+        println!("{last_number}");
     }
 }
