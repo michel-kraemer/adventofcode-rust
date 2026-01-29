@@ -22,9 +22,15 @@ fn main() {
         let target_sum = sum / if part1 { 3 } else { 4 };
 
         let mut combinations = Vec::new();
+        let mut remaining_sums = Vec::new();
+        let mut s = sum;
         for (i, &p) in packages.iter().enumerate() {
             combinations.push((p, p, i));
+            remaining_sums.push(s);
+            s -= p;
         }
+        remaining_sums.push(0);
+
         'outer: loop {
             let mut new_combinations = Vec::new();
             for (current_sum, current_qe, last_i) in combinations {
@@ -34,7 +40,8 @@ fn main() {
                     if new_sum == target_sum {
                         println!("{new_qe}");
                         break 'outer;
-                    } else if new_sum <= target_sum {
+                    } else if new_sum <= target_sum && new_sum + remaining_sums[i + 1] >= target_sum
+                    {
                         new_combinations.push((new_sum, new_qe, i));
                     }
                 }
