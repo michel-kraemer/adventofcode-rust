@@ -12,7 +12,7 @@ enum Gear {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 struct State {
-    minutes: usize,
+    minutes: u32,
     x: usize,
     y: usize,
     gear: Gear,
@@ -71,7 +71,7 @@ fn main() {
     // the maximum edge weight, which is 14 in our case, because it may take 7
     // minutes to change gear plus 7 minutes to change it back)
     let mut buckets = vec![Vec::new(); 15];
-    let mut best = vec![Grid::new(target_x, target_y, usize::MAX); 3];
+    let mut best = vec![Grid::new(target_x, target_y, u32::MAX); 3];
     let initial = State {
         minutes: 0,
         x: 0,
@@ -120,32 +120,32 @@ fn main() {
                                 gear: s.gear,
                             };
                             best[ns.gear as usize].insert(ns.x, ns.y, ns.minutes);
-                            buckets[ns.minutes + eta - bucket].push(ns);
+                            buckets[ns.minutes as usize + eta - bucket].push(ns);
                         }
                     }
                 }
             }
 
+            let current_type = erosion_level(s.x, s.y, target_x, target_y, depth, &mut cache) % 3;
             for ng in [Gear::Neither, Gear::Torch, Gear::Climbing] {
+                if ng as u32 == current_type {
+                    continue;
+                }
                 let e = best[ng as usize].get(s.x, s.y);
                 if e > s.minutes + 7 {
-                    let current_type =
-                        erosion_level(s.x, s.y, target_x, target_y, depth, &mut cache) % 3;
-                    if ng as u32 != current_type {
-                        let mut eta = target_x.abs_diff(s.x) + target_y.abs_diff(s.y);
-                        if ng != Gear::Torch {
-                            eta += 7;
-                        }
-
-                        let ns = State {
-                            minutes: s.minutes + 7,
-                            x: s.x,
-                            y: s.y,
-                            gear: ng,
-                        };
-                        best[ns.gear as usize].insert(ns.x, ns.y, ns.minutes);
-                        buckets[ns.minutes + eta - bucket].push(ns);
+                    let mut eta = target_x.abs_diff(s.x) + target_y.abs_diff(s.y);
+                    if ng != Gear::Torch {
+                        eta += 7;
                     }
+
+                    let ns = State {
+                        minutes: s.minutes + 7,
+                        x: s.x,
+                        y: s.y,
+                        gear: ng,
+                    };
+                    best[ns.gear as usize].insert(ns.x, ns.y, ns.minutes);
+                    buckets[ns.minutes as usize + eta - bucket].push(ns);
                 }
             }
         }

@@ -27,6 +27,12 @@ where
             return;
         }
 
+        if y >= self.height && x < self.width {
+            self.height *= 2;
+            self.inner.resize(self.width * self.height, self.default);
+            return;
+        };
+
         let nw = if x >= self.width {
             self.width * 2
         } else {
