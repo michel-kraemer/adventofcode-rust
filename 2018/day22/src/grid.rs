@@ -23,34 +23,38 @@ where
     }
 
     fn ensure_size(&mut self, x: usize, y: usize) {
-        if x >= self.width || y >= self.height {
-            let nw = if x >= self.width {
-                self.width * 2
-            } else {
-                self.width
-            };
-            let nh = if y >= self.height {
-                self.height * 2
-            } else {
-                self.height
-            };
-
-            let mut ni = vec![self.default; nw * nh];
-            for y in 0..self.height {
-                for x in 0..self.width {
-                    ni[y * nw + x] = self.inner[y * self.width + x];
-                }
-            }
-
-            self.inner = ni;
-            self.width = nw;
-            self.height = nh;
+        if x < self.width && y < self.height {
+            return;
         }
+
+        let nw = if x >= self.width {
+            self.width * 2
+        } else {
+            self.width
+        };
+        let nh = if y >= self.height {
+            self.height * 2
+        } else {
+            self.height
+        };
+
+        let mut ni = vec![self.default; nw * nh];
+        for y in 0..self.height {
+            ni[y * nw..y * nw + self.width]
+                .copy_from_slice(&self.inner[y * self.width..y * self.width + self.width]);
+        }
+
+        self.inner = ni;
+        self.width = nw;
+        self.height = nh;
     }
 
     pub fn get(&mut self, x: usize, y: usize) -> T {
-        self.ensure_size(x, y);
-        self.inner[y * self.width + x]
+        if x < self.width && y < self.height {
+            self.inner[y * self.width + x]
+        } else {
+            self.default
+        }
     }
 
     pub fn insert(&mut self, x: usize, y: usize, v: T) {
