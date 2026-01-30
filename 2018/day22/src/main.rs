@@ -10,14 +10,6 @@ enum Gear {
     Climbing = 2,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-struct State {
-    minutes: u32,
-    x: usize,
-    y: usize,
-    gear: Gear,
-}
-
 struct Erosion {
     target_x: usize,
     target_y: usize,
@@ -102,73 +94,60 @@ fn main() {
         .map(|_| Vec::with_capacity(1000))
         .collect::<Vec<_>>();
     let mut best = vec![Grid::new(target_x + 10, target_y + 10, u32::MAX); 3];
-    let initial = State {
-        minutes: 0,
-        x: 0,
-        y: 0,
-        gear: Gear::Torch,
-    };
     best[Gear::Torch as usize].insert(0, 0, 0);
-    buckets[0].push(initial);
+    buckets[0].push((0, 0, Gear::Torch));
 
     let mut bucket = target_x + target_y;
     'outer: loop {
-        while let Some(s) = buckets[0].pop() {
-            if s.x == target_x && s.y == target_y && s.gear == Gear::Torch {
-                println!("{}", s.minutes);
+        while let Some((x, y, gear)) = buckets[0].pop() {
+            let current_minutes = best[gear as usize].get(x, y);
+
+            if x == target_x && y == target_y && gear == Gear::Torch {
+                println!("{current_minutes}");
                 break 'outer;
             }
 
             for dir in [(0, 1), (1, 0), (0, -1), (-1, 0)] {
-                let nx = s.x as i64 + dir.0;
-                let ny = s.y as i64 + dir.1;
-                if nx >= 0 && ny >= 0 {
-                    let e = best[s.gear as usize].get(nx as usize, ny as usize);
-                    if e > s.minutes + 1 {
-                        let dest_type = erosion.get(nx as usize, ny as usize) % 3;
-                        if s.gear as u32 != dest_type {
-                            // Use manhattan distance as a simple heuristic for
-                            // the A* algorithm. Include the time it takes to
-                            // change gear.
-                            let mut eta =
-                                target_x.abs_diff(nx as usize) + target_y.abs_diff(ny as usize);
-                            if s.gear != Gear::Torch {
-                                eta += 7;
-                            }
-
-                            let ns = State {
-                                minutes: s.minutes + 1,
-                                x: nx as usize,
-                                y: ny as usize,
-                                gear: s.gear,
-                            };
-                            best[ns.gear as usize].insert(ns.x, ns.y, ns.minutes);
-                            buckets[ns.minutes as usize + eta - bucket].push(ns);
+                let Some(nx) = x.checked_add_signed(dir.0) else {
+                    continue;
+                };
+                let Some(ny) = y.checked_add_signed(dir.1) else {
+                    continue;
+                };
+                let e = best[gear as usize].get(nx, ny);
+                if e > current_minutes + 1 {
+                    let dest_type = erosion.get(nx, ny) % 3;
+                    if gear as u32 != dest_type {
+                        // Use manhattan distance as a simple heuristic for
+                        // the A* algorithm. Include the time it takes to
+                        // change gear.
+                        let mut eta = target_x.abs_diff(nx) + target_y.abs_diff(ny);
+                        if gear != Gear::Torch {
+                            eta += 7;
                         }
+
+                        let new_minutes = current_minutes + 1;
+                        best[gear as usize].insert(nx, ny, new_minutes);
+                        buckets[new_minutes as usize + eta - bucket].push((nx, ny, gear));
                     }
                 }
             }
 
-            let current_type = erosion.get(s.x, s.y) % 3;
+            let current_type = erosion.get(x, y) % 3;
             for ng in [Gear::Neither, Gear::Torch, Gear::Climbing] {
                 if ng as u32 == current_type {
                     continue;
                 }
-                let e = best[ng as usize].get(s.x, s.y);
-                if e > s.minutes + 7 {
-                    let mut eta = target_x.abs_diff(s.x) + target_y.abs_diff(s.y);
+                let e = best[ng as usize].get(x, y);
+                if e > current_minutes + 7 {
+                    let mut eta = target_x.abs_diff(x) + target_y.abs_diff(y);
                     if ng != Gear::Torch {
                         eta += 7;
                     }
 
-                    let ns = State {
-                        minutes: s.minutes + 7,
-                        x: s.x,
-                        y: s.y,
-                        gear: ng,
-                    };
-                    best[ns.gear as usize].insert(ns.x, ns.y, ns.minutes);
-                    buckets[ns.minutes as usize + eta - bucket].push(ns);
+                    let new_minutes = current_minutes + 7;
+                    best[ng as usize].insert(x, y, new_minutes);
+                    buckets[new_minutes as usize + eta - bucket].push((x, y, ng));
                 }
             }
         }
