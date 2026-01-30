@@ -18,30 +18,45 @@ struct State {
     gear: Gear,
 }
 
-fn erosion_level(
-    x: usize,
-    y: usize,
+struct Erosion {
     target_x: usize,
     target_y: usize,
-    depth: usize,
-    cache: &mut Grid<u32>,
-) -> u32 {
-    let cv = cache.get(x, y);
-    if cv != u32::MAX {
-        cv
-    } else {
-        let gi = if (y == 0 && x == 0) || (y == target_y && x == target_x) {
+    depth: u32,
+    init_x: u32,
+    init_y: u32,
+    cache: Grid<u32>,
+}
+
+impl Erosion {
+    fn new(target_x: usize, target_y: usize, depth: u32, init_x: u32, init_y: u32) -> Self {
+        Self {
+            target_x,
+            target_y,
+            depth,
+            init_x,
+            init_y,
+            cache: Grid::new(target_x, target_y, u32::MAX),
+        }
+    }
+
+    fn get(&mut self, x: usize, y: usize) -> u32 {
+        let cv = self.cache.get(x, y);
+        if cv != u32::MAX {
+            return cv;
+        }
+
+        let gi = if (y == 0 && x == 0) || (y == self.target_y && x == self.target_x) {
             0
         } else if y == 0 {
-            x as u32 * 16807
+            x as u32 * self.init_x
         } else if x == 0 {
-            y as u32 * 48271
+            y as u32 * self.init_y
         } else {
-            erosion_level(x - 1, y, target_x, target_y, depth, cache)
-                * erosion_level(x, y - 1, target_x, target_y, depth, cache)
+            self.get(x - 1, y) * self.get(x, y - 1)
         };
-        let el = (gi + depth as u32) % 20183;
-        cache.insert(x, y, el);
+
+        let el = (gi + self.depth) % 20183;
+        self.cache.insert(x, y, el);
         el
     }
 }
@@ -51,17 +66,30 @@ fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
     let mut lines = input.lines();
 
-    let depth = lines.next().unwrap()[7..].parse::<usize>().unwrap();
+    let depth = lines.next().unwrap()[7..].parse::<u32>().unwrap();
     let (target_x, target_y) = lines.next().unwrap()[8..].split_once(',').unwrap();
-    let target_x = target_x.parse::<usize>().unwrap();
-    let target_y = target_y.parse::<usize>().unwrap();
+    let mut target_x = target_x.parse::<usize>().unwrap();
+    let mut target_y = target_y.parse::<usize>().unwrap();
 
-    // part 1
-    let mut cache = Grid::new(target_x, target_y, u32::MAX);
+    let mut init_x = 16807;
+    let mut init_y = 48271;
+
+    if target_y > target_x {
+        // Minor performance improvement: this allows us to use resize() more
+        // often when updating the grid. See Grid::ensure_size().
+        (target_x, target_y) = (target_y, target_x);
+        (init_x, init_y) = (init_y, init_x);
+    }
+
+    // part 1 ...
+
+    // make the grid a little bit larger than necessary to avoid some
+    // reallocations
+    let mut erosion = Erosion::new(target_x + 10, target_y + 10, depth, init_x, init_y);
     let mut sum = 0;
     for y in 0..=target_y {
         for x in 0..=target_x {
-            sum += erosion_level(x, y, target_x, target_y, depth, &mut cache) % 3;
+            sum += erosion.get(x, y) % 3;
         }
     }
     println!("{sum}");
@@ -70,8 +98,10 @@ fn main() {
     // with Dial's algorithm (n + 1 buckets instead of a BinaryHeap where n is
     // the maximum edge weight, which is 14 in our case, because it may take 7
     // minutes to change gear plus 7 minutes to change it back)
-    let mut buckets = vec![Vec::new(); 15];
-    let mut best = vec![Grid::new(target_x, target_y, u32::MAX); 3];
+    let mut buckets = (0..15)
+        .map(|_| Vec::with_capacity(1000))
+        .collect::<Vec<_>>();
+    let mut best = vec![Grid::new(target_x + 10, target_y + 10, u32::MAX); 3];
     let initial = State {
         minutes: 0,
         x: 0,
@@ -95,14 +125,7 @@ fn main() {
                 if nx >= 0 && ny >= 0 {
                     let e = best[s.gear as usize].get(nx as usize, ny as usize);
                     if e > s.minutes + 1 {
-                        let dest_type = erosion_level(
-                            nx as usize,
-                            ny as usize,
-                            target_x,
-                            target_y,
-                            depth,
-                            &mut cache,
-                        ) % 3;
+                        let dest_type = erosion.get(nx as usize, ny as usize) % 3;
                         if s.gear as u32 != dest_type {
                             // Use manhattan distance as a simple heuristic for
                             // the A* algorithm. Include the time it takes to
@@ -126,7 +149,7 @@ fn main() {
                 }
             }
 
-            let current_type = erosion_level(s.x, s.y, target_x, target_y, depth, &mut cache) % 3;
+            let current_type = erosion.get(s.x, s.y) % 3;
             for ng in [Gear::Neither, Gear::Torch, Gear::Climbing] {
                 if ng as u32 == current_type {
                     continue;

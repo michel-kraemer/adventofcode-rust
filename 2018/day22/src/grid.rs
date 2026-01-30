@@ -28,6 +28,7 @@ where
         }
 
         if y >= self.height && x < self.width {
+            // shortcut if only the height needs to be adapted
             self.height *= 2;
             self.inner.resize(self.width * self.height, self.default);
             return;
