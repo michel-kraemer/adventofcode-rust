@@ -1,203 +1,270 @@
-use std::fs;
+use std::{fs, str::Bytes};
 
+use rustc_hash::FxHashMap;
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 struct Point {
-    x: f64,
-    y: f64,
-    z: f64,
+    x: i32,
+    y: i32,
+    z: i32,
+}
+
+impl Point {
+    /// Compute Manhattan distance to another point
+    fn dist(&self, other: &Point) -> i32 {
+        (other.x - self.x).abs() + (other.y - self.y).abs() + (other.z - self.z).abs()
+    }
 }
 
 struct Bot {
     center: Point,
-    range: f64,
+    range: i32,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 struct Node {
     min: Point,
     max: Point,
 }
 
-impl Point {
-    fn dist(&self, other: &Point) -> f64 {
-        (other.x - self.x).abs() + (other.y - self.y).abs() + (other.z - self.z).abs()
+impl Node {
+    /// Subdivide this octree node into its 8 children
+    fn subdivide(&self) -> [Node; 8] {
+        let cx = self.max.x - self.min.x;
+        let cy = self.max.y - self.min.y;
+        let cz = self.max.z - self.min.z;
+        let hx = self.min.x + cx / 2;
+        let hy = self.min.y + cy / 2;
+        let hz = self.min.z + cz / 2;
+        [
+            Node {
+                min: Point {
+                    x: self.min.x,
+                    y: self.min.y,
+                    z: self.min.z,
+                },
+                max: Point {
+                    x: hx,
+                    y: hy,
+                    z: hz,
+                },
+            },
+            Node {
+                min: Point {
+                    x: hx,
+                    y: self.min.y,
+                    z: self.min.z,
+                },
+                max: Point {
+                    x: self.max.x,
+                    y: hy,
+                    z: hz,
+                },
+            },
+            Node {
+                min: Point {
+                    x: self.min.x,
+                    y: hy,
+                    z: self.min.z,
+                },
+                max: Point {
+                    x: hx,
+                    y: self.max.y,
+                    z: hz,
+                },
+            },
+            Node {
+                min: Point {
+                    x: hx,
+                    y: hy,
+                    z: self.min.z,
+                },
+                max: Point {
+                    x: self.max.x,
+                    y: self.max.y,
+                    z: hz,
+                },
+            },
+            Node {
+                min: Point {
+                    x: self.min.x,
+                    y: self.min.y,
+                    z: hz,
+                },
+                max: Point {
+                    x: hx,
+                    y: hy,
+                    z: self.max.z,
+                },
+            },
+            Node {
+                min: Point {
+                    x: hx,
+                    y: self.min.y,
+                    z: hz,
+                },
+                max: Point {
+                    x: self.max.x,
+                    y: hy,
+                    z: self.max.z,
+                },
+            },
+            Node {
+                min: Point {
+                    x: self.min.x,
+                    y: hy,
+                    z: hz,
+                },
+                max: Point {
+                    x: hx,
+                    y: self.max.y,
+                    z: self.max.z,
+                },
+            },
+            Node {
+                min: Point {
+                    x: hx,
+                    y: hy,
+                    z: hz,
+                },
+                max: Point {
+                    x: self.max.x,
+                    y: self.max.y,
+                    z: self.max.z,
+                },
+            },
+        ]
+    }
+
+    /// Check if this node has a volume of 0
+    fn is_empty(&self) -> bool {
+        self.min.x == self.max.x || self.min.y == self.max.y || self.min.z == self.max.z
+    }
+
+    /// Check if this node represents a single cell (i.e. if its width, height,
+    /// and depth are all 1)
+    fn is_single_cell(&self) -> bool {
+        self.max.x - self.min.x == 1 && self.max.y - self.min.y == 1 && self.max.z - self.min.z == 1
+    }
+
+    /// Check if this any cell within this node is in the range of the given bot
+    fn intersects(&self, bot: &Bot) -> bool {
+        let nearest_point = Point {
+            x: self.min.x.max(bot.center.x.min(self.max.x - 1)),
+            y: self.min.y.max(bot.center.y.min(self.max.y - 1)),
+            z: self.min.z.max(bot.center.z.min(self.max.z - 1)),
+        };
+        bot.center.dist(&nearest_point) <= bot.range
     }
 }
 
-fn intersects(bot: &Bot, node: &Node) -> bool {
-    let nearest_point = Point {
-        x: node.min.x.max(bot.center.x.min(node.max.x)),
-        y: node.min.y.max(bot.center.y.min(node.max.y)),
-        z: node.min.z.max(bot.center.z.min(node.max.z)),
+/// This is faster than splitting the lines and then using parse()
+fn parse_next_number(bytes: &mut Bytes) -> Option<i32> {
+    let mut b = bytes.next()?;
+    while b != b'-' && !b.is_ascii_digit() {
+        b = bytes.next()?;
+    }
+
+    let negative = if b == b'-' {
+        b = bytes.next()?;
+        true
+    } else {
+        false
     };
-    bot.center.dist(&nearest_point) <= bot.range
+
+    let mut r = 0;
+    while b.is_ascii_digit() {
+        r *= 10;
+        r += (b - b'0') as i32;
+        b = bytes.next()?;
+    }
+
+    Some(if negative { -r } else { r })
 }
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
-    let bots = input
-        .lines()
-        .map(|l| {
-            let (left, right) = l.split_once(' ').unwrap();
-            let left = left.split(&['<', '>']).collect::<Vec<_>>();
-            let pos = left[1];
-            let pos = pos
-                .split(',')
-                .map(|p| p.parse::<f64>().unwrap())
-                .collect::<Vec<_>>();
-            let range = right[2..].parse::<f64>().unwrap();
-            Bot {
-                center: Point {
-                    x: pos[0],
-                    y: pos[1],
-                    z: pos[2],
-                },
-                range,
-            }
-        })
-        .collect::<Vec<_>>();
+    let mut bytes = input.bytes();
+    let mut bots = Vec::new();
+    loop {
+        let Some(x) = parse_next_number(&mut bytes) else {
+            break;
+        };
+        let y = parse_next_number(&mut bytes).unwrap();
+        let z = parse_next_number(&mut bytes).unwrap();
+        let range = parse_next_number(&mut bytes).unwrap();
+        bots.push(Bot {
+            center: Point { x, y, z },
+            range,
+        });
+    }
 
     // part 1
-    let strongest_bot = bots
-        .iter()
-        .max_by(|b1, b2| b1.range.total_cmp(&b2.range))
-        .unwrap();
+    let strongest_bot = bots.iter().max_by_key(|b| b.range).unwrap();
     let in_range_of_strongest = bots
         .iter()
         .filter(|b| b.center.dist(&strongest_bot.center) <= strongest_bot.range)
         .count();
-    println!("{}", in_range_of_strongest);
+    println!("{in_range_of_strongest}");
 
     // part 2 ...
-    // calculate bounding box
-    let min_x = bots
-        .iter()
-        .map(|b| b.center.x - b.range)
-        .min_by(|a, b| a.total_cmp(b))
-        .unwrap();
-    let min_y = bots
-        .iter()
-        .map(|b| b.center.y - b.range)
-        .min_by(|a, b| a.total_cmp(b))
-        .unwrap();
-    let min_z = bots
-        .iter()
-        .map(|b| b.center.z - b.range)
-        .min_by(|a, b| a.total_cmp(b))
-        .unwrap();
-    let max_x = bots
-        .iter()
-        .map(|b| b.center.x + b.range)
-        .max_by(|a, b| a.total_cmp(b))
-        .unwrap() as f64;
-    let max_y = bots
-        .iter()
-        .map(|b| b.center.y + b.range)
-        .max_by(|a, b| a.total_cmp(b))
-        .unwrap();
-    let max_z = bots
-        .iter()
-        .map(|b| b.center.z + b.range)
-        .max_by(|a, b| a.total_cmp(b))
-        .unwrap();
+    // compute bounding box
+    let min_x = bots.iter().map(|b| b.center.x - b.range).min().unwrap();
+    let min_y = bots.iter().map(|b| b.center.y - b.range).min().unwrap();
+    let min_z = bots.iter().map(|b| b.center.z - b.range).min().unwrap();
+    let max_x = bots.iter().map(|b| b.center.x + b.range).max().unwrap() + 1;
+    let max_y = bots.iter().map(|b| b.center.y + b.range).max().unwrap() + 1;
+    let max_z = bots.iter().map(|b| b.center.z + b.range).max().unwrap() + 1;
 
-    // create octree root node
-    let mut nodes = vec![Node {
-        min: Point {
-            x: min_x,
-            y: min_y,
-            z: min_z,
-        },
-        max: Point {
-            x: max_x,
-            y: max_y,
-            z: max_z,
-        },
-    }];
+    let mut cache: FxHashMap<Node, usize> = FxHashMap::default();
 
-    // current size of child nodes on this level
-    let mut cx = (max_x - min_x) / 2.;
-    let mut cy = (max_y - min_y) / 2.;
-    let mut cz = (max_z - min_z) / 2.;
+    'outer: for min_intersections in (0..bots.len()).rev() {
+        // create octree root node
+        let mut nodes = vec![Node {
+            min: Point {
+                x: min_x,
+                y: min_y,
+                z: min_z,
+            },
+            max: Point {
+                x: max_x,
+                y: max_y,
+                z: max_z,
+            },
+        }];
 
-    // as long as it makes sense to go one level deeper ...
-    while cx > 1. || cy > 1. || cz > 1. {
-        // for all child nodes, check how many intersections they have with
-        // bots and only keep those child nodes that have the highest number
-        // of intersections
-        let mut new_nodes = Vec::new();
-        let mut min_n_intersections = 0;
-        for n in nodes {
-            for x in 0..2 {
-                for y in 0..2 {
-                    for z in 0..2 {
-                        let child = Node {
-                            min: Point {
-                                x: n.min.x + cx * x as f64,
-                                y: n.min.y + cy * y as f64,
-                                z: n.min.z + cz * z as f64,
-                            },
-                            max: Point {
-                                x: n.min.x + cx * (x + 1) as f64,
-                                y: n.min.y + cy * (y + 1) as f64,
-                                z: n.min.z + cz * (z + 1) as f64,
-                            },
-                        };
-
-                        // check how many intersections this child node has
-                        // with all bots
-                        let n_intersections = bots.iter().filter(|b| intersects(b, &child)).count();
-
-                        // only keep this node if it has as many intersections
-                        // or more than the previous nodes
-                        if n_intersections >= min_n_intersections {
-                            if n_intersections > min_n_intersections {
-                                // we found a better minimum number of
-                                // intersections - throw away all other nodes
-                                new_nodes.clear();
-                                min_n_intersections = n_intersections;
-                            }
-                            new_nodes.push(child);
-                        }
+        // Recursively look for nodes that are a single cell and which intersect
+        // with exactly `min_intersections` bots. This can only happen if their
+        // parent nodes intersection with at least `min_intersections` bots.
+        // Otherwise, we don't need to go deeper.
+        while !nodes.is_empty() {
+            let mut new_nodes = Vec::new();
+            for n in &nodes {
+                for child in n.subdivide().into_iter().filter(|c| !c.is_empty()) {
+                    let n_intersections = *cache
+                        .entry(child)
+                        .or_insert_with(|| bots.iter().filter(|b| child.intersects(b)).count());
+                    if n_intersections >= min_intersections {
+                        new_nodes.push(child);
                     }
                 }
             }
-        }
+            nodes = new_nodes;
 
-        assert!(!new_nodes.is_empty(), "No nodes left");
-
-        nodes = new_nodes;
-        cx /= 2.;
-        cy /= 2.;
-        cz /= 2.;
-    }
-
-    // iterate through all integer positions in the remaining nodes (the search
-    // space should be very small at this point) and calculate the number of
-    // intersections with all bots as well as the distance to (0, 0, 0)
-    let mut distances = Vec::new();
-    for n in nodes {
-        for x in (n.min.x.floor() as i64)..=(n.max.x.ceil() as i64) {
-            for y in (n.min.y.floor() as i64)..=(n.max.y.ceil() as i64) {
-                for z in (n.min.z.floor() as i64)..=(n.max.z.ceil() as i64) {
-                    let p = Point {
-                        x: x as f64,
-                        y: y as f64,
-                        z: z as f64,
-                    };
-                    let in_range = bots.iter().filter(|b| b.center.dist(&p) <= b.range).count();
-                    distances.push((x + y + z, in_range));
-                }
+            // find single-cell nodes
+            let singles = nodes
+                .iter()
+                .filter(|n| n.is_single_cell())
+                .collect::<Vec<_>>();
+            if !singles.is_empty() {
+                // find cell that is closest to (0,0,0)
+                let closest = singles
+                    .into_iter()
+                    .min_by_key(|s| s.min.x + s.min.y + s.min.z)
+                    .unwrap();
+                println!("{}", closest.min.x + closest.min.y + closest.min.z);
+                break 'outer;
             }
         }
     }
-
-    // find the points that are in range of the most bots and then select
-    // the one with the lowest distance to (0, 0, 0)
-    let max_in_range = distances.iter().map(|d| d.1).max().unwrap();
-    let min_distance = distances
-        .iter()
-        .filter(|d| d.1 == max_in_range)
-        .map(|d| d.0)
-        .min()
-        .unwrap();
-    println!("{}", min_distance);
 }
