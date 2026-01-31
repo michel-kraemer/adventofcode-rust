@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, fs};
+use std::{fs, str::Bytes};
 
 struct Point {
     x: u16,
@@ -8,7 +8,7 @@ struct Point {
 }
 
 fn split(x: u16) -> u64 {
-    let mut x: u64 = x as u64;
+    let mut x = x as u64;
     x = (x ^ (x << 24)) & 0x000000ff000000ff;
     x = (x ^ (x << 12)) & 0x000f000f000f000f;
     x = (x ^ (x << 6)) & 0x0303030303030303;
@@ -18,6 +18,30 @@ fn split(x: u16) -> u64 {
 
 fn morton(p: &Point) -> u64 {
     (split(p.x) << 3) + (split(p.y) << 2) + (split(p.z) << 1) + split(p.t)
+}
+
+/// This is faster than splitting the lines and then using parse()
+fn parse_next_number(bytes: &mut Bytes) -> Option<i32> {
+    let mut b = bytes.next()?;
+    while b != b'-' && !b.is_ascii_digit() {
+        b = bytes.next()?;
+    }
+
+    let negative = if b == b'-' {
+        b = bytes.next()?;
+        true
+    } else {
+        false
+    };
+
+    let mut r = 0;
+    while b.is_ascii_digit() {
+        r *= 10;
+        r += (b - b'0') as i32;
+        b = bytes.next()?;
+    }
+
+    Some(if negative { -r } else { r })
 }
 
 fn main() {
@@ -34,42 +58,38 @@ fn main() {
     const MAX_DISTANCE: u16 = 3;
 
     let input = fs::read_to_string("input.txt").expect("Could not read file");
-    let mut min_x = i64::MAX;
-    let mut min_y = i64::MAX;
-    let mut min_z = i64::MAX;
-    let mut min_t = i64::MAX;
-    let mut max_x = i64::MIN;
-    let mut max_y = i64::MIN;
-    let mut max_z = i64::MIN;
-    let mut max_t = i64::MIN;
-    let points = input
-        .lines()
-        .map(|l| {
-            let p = l.trim().split(',').collect::<Vec<_>>();
-            let coords = (
-                p[1].parse::<i64>().unwrap(),
-                p[0].parse::<i64>().unwrap(),
-                p[2].parse::<i64>().unwrap(),
-                p[3].parse::<i64>().unwrap(),
-            );
-            min_x = min_x.min(coords.0);
-            min_y = min_y.min(coords.1);
-            min_z = min_z.min(coords.2);
-            min_t = min_z.min(coords.3);
-            max_x = max_x.max(coords.0);
-            max_y = max_y.max(coords.1);
-            max_z = max_z.max(coords.2);
-            max_t = max_z.max(coords.3);
-            coords
-        })
-        .collect::<Vec<_>>();
+    let mut bytes = input.bytes();
+
+    let mut min_x = i32::MAX;
+    let mut min_y = i32::MAX;
+    let mut min_z = i32::MAX;
+    let mut min_t = i32::MAX;
+    let mut max_x = i32::MIN;
+    let mut max_y = i32::MIN;
+    let mut max_z = i32::MIN;
+    let mut max_t = i32::MIN;
+    let mut points = Vec::new();
+    while let Some(x) = parse_next_number(&mut bytes) {
+        let y = parse_next_number(&mut bytes).unwrap();
+        let z = parse_next_number(&mut bytes).unwrap();
+        let t = parse_next_number(&mut bytes).unwrap();
+        min_x = min_x.min(x);
+        min_y = min_y.min(y);
+        min_z = min_z.min(z);
+        min_t = min_z.min(t);
+        max_x = max_x.max(x);
+        max_y = max_y.max(y);
+        max_z = max_z.max(z);
+        max_t = max_z.max(t);
+        points.push((x, y, z, t));
+    }
 
     // Our morton code function can only handle u16. This should be more than enough.
     // It seems the puzzle input is always in the range (-8, -8, -8, -8) - (8, 8, 8, 8)
-    assert!(max_x - min_x < u16::MAX as i64);
-    assert!(max_y - min_y < u16::MAX as i64);
-    assert!(max_z - min_z < u16::MAX as i64);
-    assert!(max_t - min_t < u16::MAX as i64);
+    assert!(max_x - min_x < u16::MAX as i32);
+    assert!(max_y - min_y < u16::MAX as i32);
+    assert!(max_z - min_z < u16::MAX as i32);
+    assert!(max_t - min_t < u16::MAX as i32);
 
     // build spatial index
     let mut points = points
@@ -86,15 +106,15 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    points.sort_by_key(|p| p.0);
+    points.sort_unstable_by_key(|p| p.0);
 
     // DBSCAN: process point by point and search for neighbors
     let mut constellations = 0;
-    let mut q = VecDeque::new();
+    let mut q = Vec::with_capacity(1000);
     while let Some(p) = points.pop() {
-        q.push_back(p);
+        q.push(p.1);
 
-        while let Some((_, pq)) = q.pop_front() {
+        while let Some(pq) = q.pop() {
             // perform spatial search: find minimum and maximum morton index
             let min = morton(&Point {
                 x: pq.x.saturating_sub(MAX_DISTANCE),
@@ -115,13 +135,13 @@ fn main() {
             // iterate through candidates from `min` to `max` and add all
             // points that actually match
             while i < points.len() && points[i].0 <= max {
-                let d = ((pq.x as i32) - (points[i].1.x as i32)).abs()
-                    + ((pq.y as i32) - (points[i].1.y as i32)).abs()
-                    + ((pq.z as i32) - (points[i].1.z as i32)).abs()
-                    + ((pq.t as i32) - (points[i].1.t as i32)).abs();
-                if d <= MAX_DISTANCE as i32 {
+                let d = pq.x.abs_diff(points[i].1.x)
+                    + pq.y.abs_diff(points[i].1.y)
+                    + pq.z.abs_diff(points[i].1.z)
+                    + pq.t.abs_diff(points[i].1.t);
+                if d <= MAX_DISTANCE {
                     // add matching point to queue to search for further neighbors
-                    q.push_back(points.remove(i));
+                    q.push(points.remove(i).1);
                 } else {
                     i += 1;
                 }
@@ -131,5 +151,5 @@ fn main() {
         constellations += 1;
     }
 
-    println!("{}", constellations);
+    println!("{constellations}");
 }
