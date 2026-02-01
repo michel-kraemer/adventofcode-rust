@@ -2,3 +2,9 @@
 name = "day17"
 version = "0.1.0"
 edition = "2024"
+
+[features]
+visualize = ["screen"]
+
+[dependencies]
+screen = { path = "../../lib/screen", optional = true }

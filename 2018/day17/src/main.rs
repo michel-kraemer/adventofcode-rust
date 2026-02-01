@@ -1,5 +1,8 @@
 use std::{fs, str::Bytes};
 
+#[cfg(feature = "visualize")]
+mod visualize;
+
 enum Line {
     Horizontal { y: usize, x: (usize, usize) },
     Vertical { x: usize, y: (usize, usize) },
@@ -34,7 +37,7 @@ fn drop(
         y += 1;
     }
 
-    // check if we've reached the end of the grid or we've already been here
+    // check if we've reached the end of the grid or if we've already been here
     if y != height && grid[y * width + x] != b'|' {
         y -= 1;
         while y >= start_y {
@@ -167,6 +170,12 @@ fn main() {
         &mut water,
         &mut pipes,
     );
+
+    #[cfg(feature = "visualize")]
+    {
+        grid[500 - min_x] = b'|';
+        visualize::visualize(&grid, width, height, 500 - min_x);
+    }
 
     // part 1
     println!("{}", water + pipes);
