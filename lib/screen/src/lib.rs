@@ -8,8 +8,10 @@ use crossbeam_channel::{Sender, bounded};
 use crossterm::{ExecutableCommand, cursor, terminal};
 
 use crate::renderer::{RenderMessage, Renderer};
+use crate::style::{StyledContent, style};
 
 mod renderer;
+pub mod style;
 
 pub struct Screen {
     width: usize,
@@ -94,6 +96,15 @@ impl Screen {
         if let Some(sender) = &mut self.sender {
             sender
                 .send(RenderMessage::RenderWithColors { new_grid })
+                .expect("Render channel is closed");
+        }
+    }
+
+    /// Update the visualization with a new styled grid
+    pub fn update_with_style(&mut self, new_grid: Vec<StyledContent<char>>) {
+        if let Some(sender) = &mut self.sender {
+            sender
+                .send(RenderMessage::RenderWithStyle { new_grid })
                 .expect("Render channel is closed");
         }
     }
@@ -290,6 +301,27 @@ impl WindowedScreen {
                 }
             }
             self.screen.update_with_colors(new_window);
+        }
+    }
+
+    /// Update the visualization with a new styled grid
+    pub fn update_with_style(
+        &mut self,
+        new_grid: Vec<StyledContent<char>>,
+        center: (usize, usize),
+    ) {
+        if self.forward {
+            self.screen.update_with_style(new_grid);
+        } else {
+            let mut new_window = vec![style(' '); self.screen.width * self.screen.height];
+            let (min_x, min_y, max_x, max_y) = self.get_window(center);
+            for y in min_y..max_y {
+                for x in min_x..max_x {
+                    new_window[(y - min_y) * self.screen.width + (x - min_x)] =
+                        new_grid[y * self.width + x];
+                }
+            }
+            self.screen.update_with_style(new_window);
         }
     }
 
