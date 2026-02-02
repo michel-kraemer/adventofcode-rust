@@ -1,11 +1,11 @@
 use std::{
-    io::{Stdout, stdout},
+    io::{Stdout, Write, stdout},
     thread,
     time::{Duration, Instant},
 };
 
 use crossterm::{
-    ExecutableCommand, cursor,
+    QueueableCommand, cursor,
     style::{
         self, Attributes, Color, ContentStyle, SetAttributes, SetBackgroundColor,
         SetForegroundColor, SetUnderlineColor, StyledContent,
@@ -91,18 +91,19 @@ impl Renderer {
                             self.last_grid[y * self.width + x].0 = c;
                             if last_cursor_x != x || last_cursor_y != y {
                                 stdout
-                                    .execute(cursor::MoveTo(
+                                    .queue(cursor::MoveTo(
                                         self.pos.0 + x as u16,
                                         self.pos.1 + y as u16,
                                     ))
                                     .unwrap();
                             }
-                            stdout.execute(style::Print(c)).unwrap();
+                            stdout.queue(style::Print(c)).unwrap();
                             last_cursor_y = y;
                             last_cursor_x = x + 1;
                         }
                     }
                 }
+                stdout.flush().unwrap();
             }
 
             RenderMessage::RenderWithColors { new_grid } => {
@@ -118,25 +119,26 @@ impl Renderer {
                         if c != self.last_grid[y * self.width + x] {
                             self.last_grid[y * self.width + x] = c;
                             if fg != last_color {
-                                stdout.execute(SetForegroundColor(fg)).unwrap();
+                                stdout.queue(SetForegroundColor(fg)).unwrap();
                                 last_color = fg;
                             }
                             if last_cursor_x != x || last_cursor_y != y {
                                 stdout
-                                    .execute(cursor::MoveTo(
+                                    .queue(cursor::MoveTo(
                                         self.pos.0 + x as u16,
                                         self.pos.1 + y as u16,
                                     ))
                                     .unwrap();
                             }
-                            stdout.execute(style::Print(c.0)).unwrap();
+                            stdout.queue(style::Print(c.0)).unwrap();
                             last_cursor_y = y;
                             last_cursor_x = x + 1;
                         }
                     }
                 }
 
-                stdout.execute(SetForegroundColor(Color::Grey)).unwrap();
+                stdout.queue(SetForegroundColor(Color::Grey)).unwrap();
+                stdout.flush().unwrap();
             }
 
             RenderMessage::RenderWithStyle { new_grid } => {
@@ -154,43 +156,45 @@ impl Renderer {
                             if let Some(fg) = c.1.foreground_color
                                 && fg != last_color
                             {
-                                stdout.execute(SetForegroundColor(fg)).unwrap();
+                                stdout.queue(SetForegroundColor(fg)).unwrap();
                                 last_color = fg;
                             }
                             if let Some(bg) = c.1.background_color
                                 && bg != last_background
                             {
-                                stdout.execute(SetBackgroundColor(bg)).unwrap();
+                                stdout.queue(SetBackgroundColor(bg)).unwrap();
                                 last_background = bg;
                             }
                             if let Some(ul) = c.1.underline_color
                                 && ul != last_underline
                             {
-                                stdout.execute(SetUnderlineColor(ul)).unwrap();
+                                stdout.queue(SetUnderlineColor(ul)).unwrap();
                                 last_underline = ul;
                             }
                             if c.1.attributes != last_attributes {
-                                stdout.execute(SetAttributes(c.1.attributes)).unwrap();
+                                stdout.queue(SetAttributes(c.1.attributes)).unwrap();
                                 last_attributes = c.1.attributes;
                             }
                             if last_cursor_x != x || last_cursor_y != y {
                                 stdout
-                                    .execute(cursor::MoveTo(
+                                    .queue(cursor::MoveTo(
                                         self.pos.0 + x as u16,
                                         self.pos.1 + y as u16,
                                     ))
                                     .unwrap();
                             }
-                            stdout.execute(style::Print(c.0)).unwrap();
+                            stdout.queue(style::Print(c.0)).unwrap();
                             last_cursor_y = y;
                             last_cursor_x = x + 1;
                         }
                     }
                 }
 
-                stdout.execute(SetForegroundColor(Color::Grey)).unwrap();
-                stdout.execute(SetBackgroundColor(Color::Reset)).unwrap();
-                stdout.execute(SetAttributes(Attributes::none())).unwrap();
+                stdout.queue(SetForegroundColor(Color::Grey)).unwrap();
+                stdout.queue(SetBackgroundColor(Color::Reset)).unwrap();
+                stdout.queue(SetAttributes(Attributes::none())).unwrap();
+
+                stdout.flush().unwrap();
             }
         }
     }
