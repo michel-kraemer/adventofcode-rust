@@ -256,6 +256,16 @@ impl WindowedScreen {
             max_y = self.height as isize;
         }
 
+        // handle case where the screen is larger than the window
+        if max_x - min_x > self.width as isize {
+            min_x = 0;
+            max_x = self.width as isize;
+        }
+        if max_y - min_y > self.height as isize {
+            min_y = 0;
+            max_y = self.height as isize;
+        }
+
         self.last_window_top_left = Some((min_x as usize, min_y as usize));
 
         (
