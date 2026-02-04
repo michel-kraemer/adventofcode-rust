@@ -1,4 +1,9 @@
-use std::{cmp::Ordering, collections::VecDeque, fs};
+use std::{
+    cmp::Ordering,
+    collections::VecDeque,
+    fs,
+    sync::atomic::{self, AtomicBool, AtomicI32},
+};
 
 // Up, Left, Right, Down - sorted in reading order
 const DIRS: [(i32, i32); 4] = [(0, -1), (-1, 0), (1, 0), (0, 1)];
@@ -278,14 +283,29 @@ fn main() {
     }
 
     // part 2
-    let mut attack_elf = 3;
-    loop {
-        attack_elf += 1;
-        if let Some(outcome) = play(&grid, width, height, attack_elf, false) {
-            println!("{outcome}");
-            break;
+    let attack_elf = AtomicI32::new(4);
+    let stop = AtomicBool::new(false);
+    let min_attack_elf = AtomicI32::new(i32::MAX);
+    let outcome = AtomicI32::new(i32::MAX);
+    std::thread::scope(|scope| {
+        for _ in 0..std::thread::available_parallelism().unwrap().get() {
+            scope.spawn(|| {
+                while !stop.load(atomic::Ordering::Relaxed) {
+                    let attack_elf = attack_elf.fetch_add(1, atomic::Ordering::Relaxed);
+                    if let Some(o) = play(&grid, width, height, attack_elf, false) {
+                        if min_attack_elf.fetch_min(attack_elf, atomic::Ordering::Relaxed)
+                            > attack_elf
+                        {
+                            outcome.store(o, atomic::Ordering::Relaxed);
+                        }
+                        stop.store(true, atomic::Ordering::Relaxed);
+                        break;
+                    }
+                }
+            });
         }
-    }
+    });
+    println!("{}", outcome.load(atomic::Ordering::Relaxed));
 }
 
 #[cfg(test)]
