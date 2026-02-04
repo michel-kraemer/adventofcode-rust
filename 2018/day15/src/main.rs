@@ -40,7 +40,7 @@ impl PartialOrd for Unit {
 /// Result of [`shortest_path()`]
 #[derive(PartialEq, Eq)]
 struct ShortestPathResult {
-    steps: usize,
+    steps: i32,
     x: i32,
     y: i32,
     start_x: i32,
@@ -65,31 +65,36 @@ impl PartialOrd for ShortestPathResult {
 /// Finds the shortest paths of the unit with index `ui` to all cells adjacent
 /// to all reachable enemies. If there are multiple paths to these neighbors,
 /// the function selects the first one in reading order.
-fn shortest_path(ui: usize, units: &[Unit], grid: &[Vec<u8>]) -> Option<ShortestPathResult> {
+fn shortest_path(
+    ui: usize,
+    units: &[Unit],
+    grid: &[u8],
+    width: usize,
+    height: usize,
+) -> Option<ShortestPathResult> {
     let u = &units[ui];
     let expected_enemy = match u.tpe {
         UnitType::Elf => b'G',
         UnitType::Goblin => b'E',
     };
 
-    let w = grid[0].len();
-    let mut best = vec![(usize::MAX, (i32::MAX, i32::MAX)); w * grid.len()];
+    let mut best = vec![(i32::MAX, (i32::MAX, i32::MAX)); grid.len()];
     let mut queue = VecDeque::new();
     for (dx, dy) in DIRS {
         let nx = u.x + dx;
         let ny = u.y + dy;
         if nx >= 0
             && ny >= 0
-            && (nx as usize) < w
-            && (ny as usize) < grid.len()
-            && grid[ny as usize][nx as usize] == b'.'
+            && (nx as usize) < width
+            && (ny as usize) < height
+            && grid[ny as usize * width + nx as usize] == b'.'
         {
             queue.push_back((1, nx, ny, nx, ny));
-            best[ny as usize * w + nx as usize] = (1, (ny, nx));
+            best[ny as usize * width + nx as usize] = (1, (ny, nx));
         }
     }
 
-    let mut lowest_steps = usize::MAX;
+    let mut lowest_steps = i32::MAX;
     let mut result = None;
 
     while let Some((steps, x, y, start_x, start_y)) = queue.pop_front() {
@@ -102,8 +107,8 @@ fn shortest_path(ui: usize, units: &[Unit], grid: &[Vec<u8>]) -> Option<Shortest
         for d in DIRS {
             let nx = x + d.0;
             let ny = y + d.1;
-            if nx >= 0 && ny >= 0 && (nx as usize) < w && (ny as usize) < grid.len() {
-                if grid[ny as usize][nx as usize] == expected_enemy {
+            if nx >= 0 && ny >= 0 && (nx as usize) < width && (ny as usize) < height {
+                if grid[ny as usize * width + nx as usize] == expected_enemy {
                     // We are next to an enemy. This is a possible destination cell.
                     let nr = ShortestPathResult {
                         steps,
@@ -117,12 +122,12 @@ fn shortest_path(ui: usize, units: &[Unit], grid: &[Vec<u8>]) -> Option<Shortest
                         lowest_steps = steps;
                     }
                     break;
-                } else if grid[ny as usize][nx as usize] == b'.'
-                    && (best[ny as usize * w + nx as usize].0 > steps + 1
-                        || (best[ny as usize * w + nx as usize].0 == steps + 1
-                            && best[ny as usize * w + nx as usize].1 > (start_y, start_x)))
+                } else if grid[ny as usize * width + nx as usize] == b'.'
+                    && (best[ny as usize * width + nx as usize].0 > steps + 1
+                        || (best[ny as usize * width + nx as usize].0 == steps + 1
+                            && best[ny as usize * width + nx as usize].1 > (start_y, start_x)))
                 {
-                    best[ny as usize * w + nx as usize] = (steps + 1, (start_y, start_x));
+                    best[ny as usize * width + nx as usize] = (steps + 1, (start_y, start_x));
                     queue.push_back((steps + 1, nx, ny, start_x, start_y));
                 }
             }
@@ -142,7 +147,7 @@ fn find_enemies_to_attack(ux: i32, uy: i32, utpe: UnitType, units: &[Unit]) -> V
 }
 
 /// Play until the battle is over
-fn play(grid: &[Vec<u8>], attack_elf: i32, part1: bool) -> Option<i32> {
+fn play(grid: &[u8], width: usize, height: usize, attack_elf: i32, part1: bool) -> Option<i32> {
     let attack_goblin = 3;
 
     // create a mutable copy of the grid
@@ -150,9 +155,9 @@ fn play(grid: &[Vec<u8>], attack_elf: i32, part1: bool) -> Option<i32> {
 
     // find all units
     let mut units = Vec::new();
-    for (y, row) in grid.iter().enumerate() {
-        for (x, c) in row.iter().enumerate() {
-            match c {
+    for y in 0..height {
+        for x in 0..width {
+            match grid[y * width + x] {
                 b'E' => units.push(Unit {
                     x: x as i32,
                     y: y as i32,
@@ -190,14 +195,14 @@ fn play(grid: &[Vec<u8>], attack_elf: i32, part1: bool) -> Option<i32> {
                 find_enemies_to_attack(units[ui].x, units[ui].y, units[ui].tpe, &units);
             if enemies_to_attack.is_empty() {
                 // can't attack: move
-                if let Some(path) = shortest_path(ui, &units, &grid) {
+                if let Some(path) = shortest_path(ui, &units, &grid, width, height) {
                     // update grid (i.e. take step)
                     let sx = path.start_x;
                     let sy = path.start_y;
 
                     let u = &mut units[ui];
-                    grid[u.y as usize][u.x as usize] = b'.';
-                    grid[sy as usize][sx as usize] = match u.tpe {
+                    grid[u.y as usize * width + u.x as usize] = b'.';
+                    grid[sy as usize * width + sx as usize] = match u.tpe {
                         UnitType::Elf => b'E',
                         UnitType::Goblin => b'G',
                     };
@@ -236,7 +241,7 @@ fn play(grid: &[Vec<u8>], attack_elf: i32, part1: bool) -> Option<i32> {
                     }
 
                     // remove the killed enemy
-                    grid[e.y as usize][e.x as usize] = b'.';
+                    grid[e.y as usize * width + e.x as usize] = b'.';
                     units.remove(ei);
                     earlier_unit_killed = ei < ui;
                 }
@@ -255,13 +260,13 @@ fn play(grid: &[Vec<u8>], attack_elf: i32, part1: bool) -> Option<i32> {
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
-    let grid = input
-        .lines()
-        .map(|l| l.bytes().collect::<Vec<_>>())
-        .collect::<Vec<_>>();
+    let lines = input.lines().collect::<Vec<_>>();
+    let width = lines[0].len();
+    let height = lines.len();
+    let grid = lines.iter().flat_map(|l| l.bytes()).collect::<Vec<_>>();
 
     // part 1
-    if let Some(outcome) = play(&grid, 3, true) {
+    if let Some(outcome) = play(&grid, width, height, 3, true) {
         println!("{}", outcome);
     }
 
@@ -269,7 +274,7 @@ fn main() {
     let mut attack_elf = 3;
     loop {
         attack_elf += 1;
-        if let Some(outcome) = play(&grid, attack_elf, false) {
+        if let Some(outcome) = play(&grid, width, height, attack_elf, false) {
             println!("{}", outcome);
             break;
         }
@@ -281,14 +286,12 @@ mod test {
     use crate::*;
 
     trait IntoGrid {
-        fn into_grid(self) -> Vec<Vec<u8>>;
+        fn into_grid(self) -> Vec<u8>;
     }
 
     impl IntoGrid for &str {
-        fn into_grid(self) -> Vec<Vec<u8>> {
-            self.lines()
-                .map(|l| l.bytes().collect::<Vec<_>>())
-                .collect::<Vec<_>>()
+        fn into_grid(self) -> Vec<u8> {
+            self.lines().flat_map(|l| l.bytes()).collect::<Vec<_>>()
         }
     }
 
@@ -302,7 +305,7 @@ mod test {
 #.....#
 #######";
 
-        let outcome = play(&grid.into_grid(), 3, true);
+        let outcome = play(&grid.into_grid(), 7, 7, 3, true);
         assert_eq!(Some(27730), outcome);
     }
 
@@ -316,7 +319,7 @@ mod test {
 #...E.#
 #######";
 
-        let outcome = play(&grid.into_grid(), 3, true);
+        let outcome = play(&grid.into_grid(), 7, 7, 3, true);
         assert_eq!(Some(36334), outcome);
     }
 
@@ -330,7 +333,7 @@ mod test {
 #..E#.#
 #######";
 
-        let outcome = play(&grid.into_grid(), 3, true);
+        let outcome = play(&grid.into_grid(), 7, 7, 3, true);
         assert_eq!(Some(39514), outcome);
     }
 
@@ -344,7 +347,7 @@ mod test {
 #...E.#
 #######";
 
-        let outcome = play(&grid.into_grid(), 3, true);
+        let outcome = play(&grid.into_grid(), 7, 7, 3, true);
         assert_eq!(Some(27755), outcome);
     }
 
@@ -358,7 +361,7 @@ mod test {
 #...#G#
 #######";
 
-        let outcome = play(&grid.into_grid(), 3, true);
+        let outcome = play(&grid.into_grid(), 7, 7, 3, true);
         assert_eq!(Some(28944), outcome);
     }
 
@@ -374,16 +377,22 @@ mod test {
 #.....G.#
 #########";
 
-        let outcome = play(&grid.into_grid(), 3, true);
+        let outcome = play(&grid.into_grid(), 9, 9, 3, true);
         assert_eq!(Some(18740), outcome);
     }
 
-    fn test_part2(grid: Vec<Vec<u8>>, expected_attack_elf: i32, expected_outcome: i32) {
+    fn test_part2(
+        grid: Vec<u8>,
+        width: usize,
+        height: usize,
+        expected_attack_elf: i32,
+        expected_outcome: i32,
+    ) {
         let mut attack_elf = 3;
         let outcome;
         loop {
             attack_elf += 1;
-            if let Some(o) = play(&grid, attack_elf, false) {
+            if let Some(o) = play(&grid, width, height, attack_elf, false) {
                 outcome = o;
                 break;
             }
@@ -403,7 +412,7 @@ mod test {
 #.....#
 #######";
 
-        test_part2(grid.into_grid(), 15, 4988);
+        test_part2(grid.into_grid(), 7, 7, 15, 4988);
     }
 
     #[test]
@@ -416,7 +425,7 @@ mod test {
 #..E#.#
 #######";
 
-        test_part2(grid.into_grid(), 4, 31284);
+        test_part2(grid.into_grid(), 7, 7, 4, 31284);
     }
 
     #[test]
@@ -429,7 +438,7 @@ mod test {
 #...E.#
 #######";
 
-        test_part2(grid.into_grid(), 15, 3478);
+        test_part2(grid.into_grid(), 7, 7, 15, 3478);
     }
 
     #[test]
@@ -442,7 +451,7 @@ mod test {
 #...#G#
 #######";
 
-        test_part2(grid.into_grid(), 12, 6474);
+        test_part2(grid.into_grid(), 7, 7, 12, 6474);
     }
 
     #[test]
@@ -457,6 +466,6 @@ mod test {
 #.....G.#
 #########";
 
-        test_part2(grid.into_grid(), 34, 1140);
+        test_part2(grid.into_grid(), 9, 9, 34, 1140);
     }
 }
