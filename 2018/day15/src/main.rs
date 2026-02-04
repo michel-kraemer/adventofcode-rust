@@ -104,9 +104,9 @@ fn shortest_path(
         }
 
         // create states for next steps
-        for d in DIRS {
-            let nx = x + d.0;
-            let ny = y + d.1;
+        for (dx, dy) in DIRS {
+            let nx = x + dx;
+            let ny = y + dy;
             if nx >= 0 && ny >= 0 && (nx as usize) < width && (ny as usize) < height {
                 if grid[ny as usize * width + nx as usize] == expected_enemy {
                     // We are next to an enemy. This is a possible destination cell.
@@ -138,12 +138,16 @@ fn shortest_path(
 }
 
 /// Iterate through all given units and check if one of them could be attacked
-/// by a unit at the given location `ux,uy` and with type `utpe`.
-fn find_enemies_to_attack(ux: i32, uy: i32, utpe: UnitType, units: &[Unit]) -> Vec<&Unit> {
+/// by a unit at the given location `ux,uy` and with type `utpe`. Select the
+/// best enemy based on lowest number of hit points and enemy position in
+/// reading order.
+fn find_enemy_to_attack(ux: i32, uy: i32, utpe: UnitType, units: &[Unit]) -> Option<usize> {
     units
         .iter()
-        .filter(|e| e.tpe != utpe && (ux - e.x).abs() + (uy - e.y).abs() == 1)
-        .collect::<Vec<_>>()
+        .enumerate()
+        .filter(|(_, e)| e.tpe != utpe && (ux - e.x).abs() + (uy - e.y).abs() == 1)
+        .min_by_key(|(_, e)| (e.points, e.y, e.x))
+        .map(|(i, _)| i)
 }
 
 /// Play until the battle is over
@@ -175,14 +179,20 @@ fn play(grid: &[u8], width: usize, height: usize, attack_elf: i32, part1: bool) 
         }
     }
 
+    let mut need_sorting = true;
     let mut rounds = 0;
+    let mut n_elves = units.iter().filter(|u| u.tpe == UnitType::Elf).count();
+    let mut n_goblins = units.len() - n_elves;
     'outer: loop {
-        // make sure units take turns in reading order
-        units.sort_unstable();
+        if need_sorting {
+            // make sure units take turns in reading order
+            units.sort_unstable();
+            need_sorting = true;
+        }
 
         let mut ui = 0;
         while ui < units.len() {
-            if units.iter().all(|u| u.tpe == units[0].tpe) {
+            if n_elves == 0 || n_goblins == 0 {
                 // all enemies have been killed
                 break 'outer;
             }
@@ -190,10 +200,10 @@ fn play(grid: &[u8], width: usize, height: usize, attack_elf: i32, part1: bool) 
             // have we killed a unit with an index less than ui?
             let mut earlier_unit_killed = false;
 
-            // find enemies next to the current unit
-            let mut enemies_to_attack =
-                find_enemies_to_attack(units[ui].x, units[ui].y, units[ui].tpe, &units);
-            if enemies_to_attack.is_empty() {
+            // find enemy next to the current unit
+            let mut enemy_to_attack =
+                find_enemy_to_attack(units[ui].x, units[ui].y, units[ui].tpe, &units);
+            if enemy_to_attack.is_none() {
                 // can't attack: move
                 if let Some(path) = shortest_path(ui, &units, &grid, width, height) {
                     // update grid (i.e. take step)
@@ -209,30 +219,22 @@ fn play(grid: &[u8], width: usize, height: usize, attack_elf: i32, part1: bool) 
                     u.x = sx;
                     u.y = sy;
 
-                    // we have moved, try to find enemies again
-                    enemies_to_attack = find_enemies_to_attack(u.x, u.y, u.tpe, &units);
+                    // we have moved, try to find enemy again
+                    enemy_to_attack = find_enemy_to_attack(u.x, u.y, u.tpe, &units);
+
+                    need_sorting = true;
                 }
             }
 
-            if !enemies_to_attack.is_empty() {
-                // We can attack. Select the best enemy based on lowest number
-                // of hit points and enemy position in reading order.
-                let enemy_to_attack = enemies_to_attack
-                    .into_iter()
-                    .min_by(|a, b| a.points.cmp(&b.points).then(a.cmp(b)))
-                    .unwrap();
-
+            if let Some(enemy_to_attack) = enemy_to_attack {
                 // decide how much damage we can do
                 let attack = match units[ui].tpe {
                     UnitType::Elf => attack_elf,
                     UnitType::Goblin => attack_goblin,
                 };
 
-                // find index of enemy to attack
-                let ei = units.iter().position(|e| e == enemy_to_attack).unwrap();
-                let e = &mut units[ei];
-
                 // perform attack
+                let e = &mut units[enemy_to_attack];
                 e.points -= attack;
                 if e.points <= 0 {
                     // part 2: abort as soon as an Elf has been killed
@@ -240,10 +242,15 @@ fn play(grid: &[u8], width: usize, height: usize, attack_elf: i32, part1: bool) 
                         return None;
                     }
 
+                    match e.tpe {
+                        UnitType::Elf => n_elves -= 1,
+                        UnitType::Goblin => n_goblins -= 1,
+                    }
+
                     // remove the killed enemy
                     grid[e.y as usize * width + e.x as usize] = b'.';
-                    units.remove(ei);
-                    earlier_unit_killed = ei < ui;
+                    units.remove(enemy_to_attack);
+                    earlier_unit_killed = enemy_to_attack < ui;
                 }
             }
 
@@ -255,7 +262,7 @@ fn play(grid: &[u8], width: usize, height: usize, attack_elf: i32, part1: bool) 
         rounds += 1;
     }
 
-    Some(rounds * units.iter().map(|u| u.points).sum::<i32>())
+    Some(rounds * units.into_iter().map(|u| u.points).sum::<i32>())
 }
 
 fn main() {
@@ -267,7 +274,7 @@ fn main() {
 
     // part 1
     if let Some(outcome) = play(&grid, width, height, 3, true) {
-        println!("{}", outcome);
+        println!("{outcome}");
     }
 
     // part 2
@@ -275,7 +282,7 @@ fn main() {
     loop {
         attack_elf += 1;
         if let Some(outcome) = play(&grid, width, height, attack_elf, false) {
-            println!("{}", outcome);
+            println!("{outcome}");
             break;
         }
     }
