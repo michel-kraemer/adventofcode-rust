@@ -7,7 +7,7 @@ use std::{
 use crossterm::{
     QueueableCommand, cursor,
     style::{
-        self, Attributes, Color, ContentStyle, SetAttributes, SetBackgroundColor,
+        self, Attribute, Attributes, Color, ContentStyle, SetAttributes, SetBackgroundColor,
         SetForegroundColor, SetUnderlineColor, StyledContent,
     },
 };
@@ -192,7 +192,9 @@ impl Renderer {
 
                 stdout.queue(SetForegroundColor(Color::Grey)).unwrap();
                 stdout.queue(SetBackgroundColor(Color::Reset)).unwrap();
-                stdout.queue(SetAttributes(Attributes::none())).unwrap();
+                stdout
+                    .queue(SetAttributes(Attribute::Reset.into()))
+                    .unwrap();
 
                 stdout.flush().unwrap();
             }

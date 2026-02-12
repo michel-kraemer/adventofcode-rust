@@ -78,6 +78,10 @@ I've created terminal visualizations of some puzzles for fun:
   </tr>
   <tr>
     <td align="center">
+      <a href="2018/day15/aoc_2018_day15.webp"><img src="2018/day15/aoc_2018_day15_mini.webp" height="200px" /></a><br />
+      <a href="2018/day15/src/main.rs">2018 - Day 15:<br>Beverage Bandits</a>
+    </td>
+    <td align="center">
       <a href="2017/day22/aoc_2017_day22.webp"><img src="2017/day22/aoc_2017_day22_mini.webp" height="200px" /></a><br />
       <a href="2017/day22/src/main.rs">2017 - Day 22:<br>Sporifica Virus</a>
     </td>
@@ -85,12 +89,12 @@ I've created terminal visualizations of some puzzles for fun:
       <a href="2016/day22/aoc_2016_day22.gif"><img src="2016/day22/aoc_2016_day22_mini.webp" height="200px" /></a><br />
       <a href="2016/day22/src/main.rs">2016 - Day 22:<br>Grid Computing</a>
     </td>
+  </tr>
+  <tr>
     <td align="center">
       <a href="2016/day08/aoc_2016_day08_mini.gif"><img src="2016/day08/aoc_2016_day08_mini.webp" width="200px" /></a><br />
       <a href="2016/day08/src/main.rs">2016 - Day 8:<br>Two-Factor Authentication</a>
     </td>
-  </tr>
-  <tr>
     <td align="center">
       <a href="2015/day18/aoc_2015_day18.gif"><img src="2015/day18/aoc_2015_day18_mini.gif" height="200px" /></a><br />
       <a href="2015/day18/src/main.rs">2015 - Day 18:<br>Like a GIF For Your Yard</a>

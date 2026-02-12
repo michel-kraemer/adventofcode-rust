@@ -5,6 +5,12 @@ use std::{
     sync::atomic::{self, AtomicBool, AtomicI32},
 };
 
+#[cfg(feature = "visualize")]
+use crate::visualize::Visualization;
+
+#[cfg(feature = "visualize")]
+mod visualize;
+
 // Up, Left, Right, Down - sorted in reading order
 const DIRS: [(i32, i32); 4] = [(0, -1), (-1, 0), (1, 0), (0, 1)];
 
@@ -18,6 +24,9 @@ enum UnitType {
 /// State of a unit
 #[derive(PartialEq, Eq)]
 struct Unit {
+    #[cfg(feature = "visualize")]
+    id: usize,
+
     /// The unit's position
     x: i32,
     y: i32,
@@ -168,12 +177,16 @@ fn play(grid: &[u8], width: usize, height: usize, attack_elf: i32, part1: bool) 
         for x in 0..width {
             match grid[y * width + x] {
                 b'E' => units.push(Unit {
+                    #[cfg(feature = "visualize")]
+                    id: units.len(),
                     x: x as i32,
                     y: y as i32,
                     tpe: UnitType::Elf,
                     points: 200,
                 }),
                 b'G' => units.push(Unit {
+                    #[cfg(feature = "visualize")]
+                    id: units.len(),
                     x: x as i32,
                     y: y as i32,
                     tpe: UnitType::Goblin,
@@ -183,6 +196,15 @@ fn play(grid: &[u8], width: usize, height: usize, attack_elf: i32, part1: bool) 
             }
         }
     }
+
+    #[cfg(feature = "visualize")]
+    let mut visualization = if part1 {
+        let mut v = Visualization::new(&grid, width, height, &units);
+        v.update(&units);
+        Some(v)
+    } else {
+        None
+    };
 
     let mut need_sorting = true;
     let mut rounds = 0;
@@ -265,6 +287,18 @@ fn play(grid: &[u8], width: usize, height: usize, attack_elf: i32, part1: bool) 
         }
 
         rounds += 1;
+
+        #[cfg(feature = "visualize")]
+        if let Some(ref mut visualization) = visualization {
+            visualization.update(&units);
+        }
+    }
+
+    #[cfg(feature = "visualize")]
+    if let Some(mut visualization) = visualization {
+        visualization.update(&units);
+        drop(visualization);
+        println!();
     }
 
     Some(rounds * units.into_iter().map(|u| u.points).sum::<i32>())
@@ -309,6 +343,7 @@ fn main() {
 }
 
 #[cfg(test)]
+#[allow(unused)]
 mod test {
     use crate::*;
 

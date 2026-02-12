@@ -82,6 +82,16 @@ impl Screen {
         }
     }
 
+    /// Returns the width of the screen
+    pub fn width(&self) -> usize {
+        self.width
+    }
+
+    /// Returns the height of the screen
+    pub fn height(&self) -> usize {
+        self.height
+    }
+
     /// Update the visualization with a new grid
     pub fn update(&mut self, new_grid: Vec<char>) {
         if let Some(sender) = &mut self.sender {
