@@ -188,7 +188,7 @@ impl Visualization {
         let last_unit_points = units.iter().map(|u| (u.id, u.points)).collect();
 
         Self {
-            screen: Screen::new(width * 2, height, 7),
+            screen: Screen::new(width * 2, height + 2, 7),
             static_grid,
             elves_max_points,
             goblins_max_points,
