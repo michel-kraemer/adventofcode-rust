@@ -49,12 +49,12 @@ impl Screen {
         let mut lock = stdout.lock();
 
         // make space on screen and reset cursor
-        for _ in 0..height {
+        for _ in 0..height - 1 {
             lock.write_all(b"\n").unwrap();
         }
         lock.execute(cursor::MoveTo(
             0,
-            cursor::position().unwrap().1 - height as u16,
+            cursor::position().unwrap().1 - (height as u16 - 1),
         ))
         .unwrap();
         let pos = cursor::position().unwrap();
@@ -133,8 +133,9 @@ impl Screen {
 
         let mut stdout = self.stdout.lock();
         stdout
-            .execute(cursor::MoveTo(0, self.pos.1 + self.height as u16 + 1))
+            .execute(cursor::MoveTo(0, self.pos.1 + (self.height as u16 - 1)))
             .unwrap();
+        stdout.write_all(b"\n").unwrap();
         stdout.execute(cursor::Show).unwrap();
 
         self.finished = true;

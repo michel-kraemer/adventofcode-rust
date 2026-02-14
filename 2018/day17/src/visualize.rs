@@ -328,8 +328,4 @@ pub fn visualize(grid: &[u8], width: usize, height: usize, start_x: usize) {
 
     // perform final update
     screen.update_with_style(new_grid.grid.clone(), (last_max_x, last_max_y));
-
-    drop(screen);
-
-    println!();
 }

@@ -106,10 +106,7 @@ fn main() {
         }
 
         #[cfg(feature = "visualize")]
-        {
-            screen.finish();
-            println!();
-        }
+        screen.finish();
 
         println!("{infects}");
     }

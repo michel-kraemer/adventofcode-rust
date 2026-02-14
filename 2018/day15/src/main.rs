@@ -297,8 +297,6 @@ fn play(grid: &[u8], width: usize, height: usize, attack_elf: i32, part1: bool) 
     #[cfg(feature = "visualize")]
     if let Some(mut visualization) = visualization {
         visualization.update(&units);
-        drop(visualization);
-        println!();
     }
 
     Some(rounds * units.into_iter().map(|u| u.points).sum::<i32>())
