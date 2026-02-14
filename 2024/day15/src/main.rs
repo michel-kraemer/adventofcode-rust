@@ -1,7 +1,7 @@
-use screen::Screen;
-use std::{env, fs};
+use std::fs;
 
-mod screen;
+#[cfg(feature = "visualize")]
+use screen::Screen;
 
 fn is_movable_vertical(grid: &[u8], w: usize, b: (usize, usize), y: usize, dy: isize) -> bool {
     let ny = y.checked_add_signed(dy).unwrap();
@@ -93,7 +93,7 @@ fn run_instructions(
     mut grid: Vec<u8>,
     w: usize,
     h: usize,
-    screen: &mut Option<Screen>,
+    #[cfg(feature = "visualize")] screen: &mut Screen,
 ) -> usize {
     for instr in instructions {
         match instr {
@@ -126,10 +126,10 @@ fn run_instructions(
                     b']' => Some((pos.0 - 1, pos.0)),
                     _ => None,
                 };
-                if let Some(b) = b {
-                    if is_movable_vertical(&grid, w, b, new_y, dy) {
-                        move_vertical(&mut grid, w, b, new_y, dy);
-                    }
+                if let Some(b) = b
+                    && is_movable_vertical(&grid, w, b, new_y, dy)
+                {
+                    move_vertical(&mut grid, w, b, new_y, dy);
                 }
                 if grid[new_y * w + pos.0] == b'.' {
                     pos.1 = new_y;
@@ -139,11 +139,8 @@ fn run_instructions(
             _ => panic!("Unknown instruction: {}", instr),
         }
 
-        if let Some(ref mut screen) = screen {
-            grid[pos.1 * w + pos.0] = b'@';
-            screen.update(&grid);
-            grid[pos.1 * w + pos.0] = b'.';
-        }
+        #[cfg(feature = "visualize")]
+        visualize(pos, &grid, screen);
     }
 
     let mut total = 0;
@@ -159,10 +156,21 @@ fn run_instructions(
     total
 }
 
-fn main() {
-    // should the grid be visualized on the terminal?
-    let visualize = env::var("AOC_VISUALIZE").is_ok();
+#[cfg(feature = "visualize")]
+fn visualize(pos: (usize, usize), grid: &[u8], screen: &mut Screen) {
+    let mut new_grid = grid
+        .iter()
+        .map(|b| match b {
+            b'.' => ' ',
+            b'#' => '█',
+            _ => *b as char,
+        })
+        .collect::<Vec<_>>();
+    new_grid[pos.1 * screen.width() + pos.0] = '@';
+    screen.update(new_grid);
+}
 
+fn main() {
     for part1 in [true, false] {
         let input = fs::read_to_string("input.txt").expect("Could not read file");
         let (grid, instructions) = input.split_once("\n\n").unwrap();
@@ -208,11 +216,8 @@ fn main() {
             grid = wider_grid;
         }
 
-        let mut screen = if visualize {
-            Some(Screen::new(width, height))
-        } else {
-            None
-        };
+        #[cfg(feature = "visualize")]
+        let mut screen = Screen::new(width, height, 200);
 
         // find robot
         let mut pos = (0, 0);
@@ -226,12 +231,19 @@ fn main() {
         }
         grid[pos.1 * width + pos.0] = b'.';
 
-        let total = run_instructions(pos, instructions, grid, width, height, &mut screen);
+        let total = run_instructions(
+            pos,
+            instructions,
+            grid,
+            width,
+            height,
+            #[cfg(feature = "visualize")]
+            &mut screen,
+        );
 
-        if let Some(mut screen) = screen {
-            screen.finish();
-        }
+        #[cfg(feature = "visualize")]
+        drop(screen);
 
-        println!("{}", total);
+        println!("{total}");
     }
 }

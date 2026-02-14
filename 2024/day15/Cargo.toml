@@ -1,7 +1,10 @@
 [package]
 name = "day15"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+
+[features]
+visualize = ["screen"]
 
 [dependencies]
-crossterm = "0.29.0"
+screen ={ path = "../../lib/screen", optional = true }
