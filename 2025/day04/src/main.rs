@@ -1,8 +1,7 @@
-use std::{collections::VecDeque, env, fs};
+use std::{collections::VecDeque, fs};
 
-use crate::screen::Screen;
-
-mod screen;
+#[cfg(feature = "visualize")]
+use screen::Screen;
 
 pub const CLOCKWISE: [(i64, i64); 8] = [
     (1, 0),   // →
@@ -20,12 +19,14 @@ trait StackOrQueue {
     fn pop(&mut self) -> Option<(usize, usize)>;
 }
 
+#[cfg(feature = "visualize")]
 #[derive(Default)]
 struct Stack(Vec<(usize, usize)>);
 
 #[derive(Default)]
 struct Queue(VecDeque<(usize, usize)>);
 
+#[cfg(feature = "visualize")]
 impl StackOrQueue for Stack {
     fn push(&mut self, xy: (usize, usize)) {
         self.0.push(xy);
@@ -46,7 +47,7 @@ impl StackOrQueue for Queue {
     }
 }
 
-fn run<T: StackOrQueue>(visualize: bool, mut queue: T) {
+fn run<T: StackOrQueue>(mut queue: T) {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
     let lines = input.lines().collect::<Vec<_>>();
     let width = lines[0].len();
@@ -88,20 +89,18 @@ fn run<T: StackOrQueue>(visualize: bool, mut queue: T) {
     }
     println!("{total1}");
 
-    let mut screen = if visualize {
-        Some(Screen::new(width, height))
-    } else {
-        None
-    };
+    #[cfg(feature = "visualize")]
+    let mut screen = Screen::new(width, height.div_ceil(2), 800);
 
     // Part 2: For each of the rolls in the queue, remove them and decrease the
     // count of all their neighbors. If the count of a neighbor falls below the
     // limit, add it to the queue too.
     let mut total2 = 0;
     while let Some((x, y)) = queue.pop() {
-        if let Some(screen) = &mut screen {
+        #[cfg(feature = "visualize")]
+        {
             counts[y * width + x] = 0;
-            screen.update(&counts);
+            visualize(&counts, &mut screen, height);
         }
 
         total2 += 1;
@@ -125,19 +124,37 @@ fn run<T: StackOrQueue>(visualize: bool, mut queue: T) {
         }
     }
 
-    if let Some(mut screen) = screen {
-        screen.finish();
-    }
+    #[cfg(feature = "visualize")]
+    drop(screen);
 
     println!("{total2}");
 }
 
-fn main() {
-    let visualize = env::var("AOC_VISUALIZE").is_ok();
-    if visualize {
-        run(true, Stack::default());
-        run(true, Queue::default());
-    } else {
-        run(false, Queue::default());
+#[cfg(feature = "visualize")]
+fn visualize(counts: &[u8], screen: &mut Screen, height: usize) {
+    let mut new_grid = vec![' '; screen.width() * screen.height()];
+    for y in (0..height).step_by(2) {
+        for x in 0..screen.width() {
+            let t = counts[y * screen.width() + x] > 0;
+            let b = if y < height - 1 {
+                counts[(y + 1) * screen.width() + x] > 0
+            } else {
+                false
+            };
+            let c = match (t, b) {
+                (true, true) => '█',
+                (true, false) => '▀',
+                (false, true) => '▄',
+                (false, false) => ' ',
+            };
+            new_grid[y / 2 * screen.width() + x] = c;
+        }
     }
+    screen.update(new_grid);
+}
+
+fn main() {
+    #[cfg(feature = "visualize")]
+    run(Stack::default());
+    run(Queue::default());
 }
