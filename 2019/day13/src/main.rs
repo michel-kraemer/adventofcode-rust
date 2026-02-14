@@ -1,7 +1,8 @@
-use crossterm::{cursor, style, terminal, ExecutableCommand};
-use std::error::Error;
-use std::io::stdout;
-use std::{env, fs, thread, time};
+use std::cmp::Ordering;
+use std::fs;
+
+#[cfg(feature = "visualize")]
+use screen::Screen;
 
 struct Machine {
     memory: Vec<i64>,
@@ -145,7 +146,7 @@ impl Machine {
     }
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
     let mut memory = input
         .trim()
@@ -156,22 +157,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     // play for free
     memory[0] = 2;
 
-    // should the game be visualized on the terminal?
-    let visualize = env::var("AOC_VISUALIZE").is_ok();
+    #[cfg(feature = "visualize")]
+    let mut screen = Screen::new(35, 25, 1000);
 
-    let mut stdout = stdout();
-    let pos = if visualize {
-        // make space on screen and reset cursor
-        stdout.execute(terminal::ScrollUp(25))?;
-        stdout.execute(cursor::MoveTo(0, cursor::position()?.1 - 25))?;
-
-        // hide cursor
-        stdout.execute(cursor::Hide)?;
-
-        cursor::position()?
-    } else {
-        (0u16, 0u16)
-    };
+    #[cfg(feature = "visualize")]
+    let mut grid = vec![' '; 35 * 25];
 
     let mut robot = Machine::new(&memory, 0);
     let mut block_tiles = 0;
@@ -183,64 +173,52 @@ fn main() -> Result<(), Box<dyn Error>> {
     loop {
         // steer towards the ball
         let joystick = match paddle_x.cmp(&ball_x) {
-            std::cmp::Ordering::Less => 1,
-            std::cmp::Ordering::Greater => -1,
-            std::cmp::Ordering::Equal => 0,
+            Ordering::Less => 1,
+            Ordering::Greater => -1,
+            Ordering::Equal => 0,
         };
 
-        if let Some(x) = robot.run(joystick) {
-            if let Some(y) = robot.run(joystick) {
-                if let Some(tpe) = robot.run(joystick) {
-                    if x == -1 && y == 0 {
-                        score = tpe;
-                    } else {
-                        let c = match tpe {
-                            0 => ' ',
-                            1 => '█',
-                            2 => {
-                                block_tiles += 1;
-                                '▪'
-                            }
-                            3 => {
-                                paddle_x = x;
-                                '—'
-                            }
-                            4 => {
-                                ball_x = x;
-                                '○'
-                            }
-                            _ => panic!(),
-                        };
-                        if visualize {
-                            stdout.execute(cursor::MoveTo(pos.0 + x as u16, pos.1 + y as u16))?;
-                            stdout.execute(style::Print(c))?;
-                        }
-                    }
-                } else {
-                    break;
-                }
+        if let Some(x) = robot.run(joystick)
+            && let Some(y) = robot.run(joystick)
+            && let Some(tpe) = robot.run(joystick)
+        {
+            if x == -1 && y == 0 {
+                score = tpe;
             } else {
-                break;
+                if tpe == 2 {
+                    block_tiles += 1;
+                } else if tpe == 3 {
+                    paddle_x = x;
+                } else if tpe == 4 {
+                    ball_x = x;
+                }
+
+                #[cfg(feature = "visualize")]
+                {
+                    grid[(y * 35 + x) as usize] = match tpe {
+                        0 => ' ',
+                        1 => '█',
+                        2 => '▪',
+                        3 => '—',
+                        4 => '○',
+                        _ => panic!(),
+                    };
+                }
             }
         } else {
             break;
         }
 
-        if visualize {
-            thread::sleep(time::Duration::from_millis(1));
-        }
+        #[cfg(feature = "visualize")]
+        screen.update(grid.clone());
     }
 
-    if visualize {
-        stdout.execute(cursor::MoveTo(0, 25))?;
-        stdout.execute(cursor::Show)?;
-    }
+    #[cfg(feature = "visualize")]
+    drop(screen);
 
     // part 1
-    println!("{}", block_tiles);
+    println!("{block_tiles}");
 
     // part 2
-    println!("{}", score);
-
-    Ok(())
+    println!("{score}");
 }
