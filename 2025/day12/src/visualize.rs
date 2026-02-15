@@ -1,12 +1,17 @@
 use dialoguer::Select;
 use dialoguer::theme::ColorfulTheme;
+use rand::rng;
+use rand::seq::SliceRandom;
+use scarlet::color::RGBColor;
+use scarlet::colormap::{ColorMap, ListedColorMap};
+use screen::style::{Color, Stylize};
+use screen::{Screen, style::style};
 
-use crate::screen::Screen;
 use std::collections::HashSet;
 use std::fs;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Visualization {
+enum VisualizationType {
     Compact,
     Simple,
 }
@@ -45,59 +50,104 @@ fn try_place(area: &mut [Vec<u64>], p: &[Vec<u8>], x: usize, y: usize, tile_id: 
     true
 }
 
-fn dfs(
-    area: &mut [Vec<u64>],
-    presents: &Vec<HashSet<Vec<Vec<u8>>>>,
-    required_tiles: &mut Vec<usize>,
-    max: (usize, usize),
-    tile_id: &mut u64,
-    screen: &mut Screen,
-    visualization: Visualization,
-) -> bool {
-    if required_tiles.iter().all(|f| *f == 0) {
-        return true;
+struct Visualization {
+    presents: Vec<HashSet<Vec<Vec<u8>>>>,
+    visualization_type: VisualizationType,
+    colors: Vec<RGBColor>,
+}
+
+impl Visualization {
+    fn new(presents: Vec<HashSet<Vec<Vec<u8>>>>, visualization_type: VisualizationType) -> Self {
+        let color_map = ListedColorMap::turbo();
+        let mut steps = Vec::new();
+        let n_colors = 220;
+        for s in 1..=220 {
+            steps.push((1.0 / n_colors as f64) * s as f64);
+        }
+        steps.drain(1..20);
+        let mut rng = rng();
+        steps.shuffle(&mut rng);
+        let colors: Vec<RGBColor> = color_map.transform(steps);
+
+        Self {
+            presents,
+            visualization_type,
+            colors,
+        }
     }
 
-    screen.update(area);
-
-    for first in 0..required_tiles.len() {
-        if required_tiles[first] == 0 {
-            continue;
-        }
-
-        required_tiles[first] -= 1;
-        *tile_id += 1;
-
-        for y in 0..max.1.min(area.len() - 2) {
-            for x in 0..max.0.min(area[0].len() - 2) {
-                for p in &presents[first] {
-                    let mut new_area = area.to_vec();
-                    if try_place(&mut new_area, p, x, y, *tile_id)
-                        && dfs(
-                            &mut new_area,
-                            presents,
-                            required_tiles,
-                            if visualization == Visualization::Compact {
-                                (x + 3, y + 3)
-                            } else {
-                                (usize::MAX, usize::MAX)
-                            },
-                            tile_id,
-                            screen,
-                            visualization,
-                        )
-                    {
-                        return true;
-                    }
+    fn update_screen(&self, area: &mut [Vec<u64>], screen: &mut Screen) {
+        let mut new_grid = vec![style(' ').reset(); screen.width() * screen.height()];
+        for y in 0..screen.height() {
+            for x in 0..screen.width() {
+                let a = area[y][x];
+                if a == 0 {
+                    new_grid[y * screen.width() + x] = style('.').white();
+                } else {
+                    let col = self.colors[(a as usize) % self.colors.len()];
+                    let col = Color::Rgb {
+                        r: col.int_r(),
+                        g: col.int_g(),
+                        b: col.int_b(),
+                    };
+                    new_grid[y * screen.width() + x] = style('#').with(col);
                 }
             }
         }
-
-        required_tiles[first] += 1;
-        *tile_id -= 1;
+        screen.update_with_style(new_grid);
     }
 
-    false
+    fn dfs(
+        &self,
+        area: &mut [Vec<u64>],
+        required_tiles: &mut Vec<usize>,
+        max: (usize, usize),
+        tile_id: &mut u64,
+        screen: &mut Screen,
+    ) -> bool {
+        if required_tiles.iter().all(|f| *f == 0) {
+            return true;
+        }
+
+        self.update_screen(area, screen);
+
+        for first in 0..required_tiles.len() {
+            if required_tiles[first] == 0 {
+                continue;
+            }
+
+            required_tiles[first] -= 1;
+            *tile_id += 1;
+
+            for y in 0..max.1.min(area.len() - 2) {
+                for x in 0..max.0.min(area[0].len() - 2) {
+                    for p in &self.presents[first] {
+                        let mut new_area = area.to_vec();
+                        if try_place(&mut new_area, p, x, y, *tile_id)
+                            && self.dfs(
+                                &mut new_area,
+                                required_tiles,
+                                if self.visualization_type == VisualizationType::Compact {
+                                    (x + 3, y + 3)
+                                } else {
+                                    (usize::MAX, usize::MAX)
+                                },
+                                tile_id,
+                                screen,
+                            )
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            required_tiles[first] += 1;
+            *tile_id -= 1;
+        }
+
+        false
+    }
 }
 
 pub fn visualize() {
@@ -113,10 +163,10 @@ pub fn visualize() {
         .items(&selections[..])
         .interact()
         .unwrap();
-    let visualization = if selection == 2 {
-        Visualization::Simple
+    let visualization_type = if selection == 2 {
+        VisualizationType::Simple
     } else {
-        Visualization::Compact
+        VisualizationType::Compact
     };
 
     let input = fs::read_to_string("input.txt").expect("Could not read file");
@@ -160,6 +210,8 @@ pub fn visualize() {
         num_tiles.push(n);
     }
 
+    let visualization = Visualization::new(presents, visualization_type);
+
     let mut total = 0;
     for a in areas.lines() {
         let parts = a.split_ascii_whitespace().collect::<Vec<_>>();
@@ -183,22 +235,20 @@ pub fn visualize() {
         }
 
         if selection == 0 || req <= ar {
-            let mut screen = Screen::new(width, height);
+            let mut screen = Screen::new(width, height, 500);
 
             let mut area = vec![vec![0; width]; height];
             let mut tile = 0;
-            dfs(
+            visualization.dfs(
                 &mut area,
-                &presents,
                 &mut required_presents,
-                if visualization == Visualization::Compact {
+                if visualization_type == VisualizationType::Compact {
                     (1, 1)
                 } else {
                     (usize::MAX, usize::MAX)
                 },
                 &mut tile,
                 &mut screen,
-                visualization,
             );
 
             screen.finish();

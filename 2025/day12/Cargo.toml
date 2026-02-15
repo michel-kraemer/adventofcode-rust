@@ -3,8 +3,11 @@ name = "day12"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+visualize = ["dialoguer", "rand", "scarlet", "screen"]
+
 [dependencies]
-crossterm = "0.29.0"
-dialoguer = "0.12.0"
-rand = "0.9.2"
-scarlet = "1.2.0"
+dialoguer = { version = "0.12.0", optional = true }
+rand = { version = "0.9.2", optional = true }
+scarlet = { version = "1.2.0", optional = true }
+screen = { path = "../../lib/screen", optional = true }

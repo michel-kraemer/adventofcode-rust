@@ -106,7 +106,7 @@ If you want to visualize your own input with my code, just change into the
 solution's directory (e.g. `cd 2025/day12`) and run the following command:
 
 ```bash
-AOC_VISUALIZE=true cargo run --release
+cargo run --release --features=visualize
 ```
 
 ## Benchmarks
