@@ -17,8 +17,8 @@ fn is_valid(password: &[u8]) -> bool {
         return false;
     }
 
-    for c in password.windows(3) {
-        if c[1] == c[2] + 1 && c[0] == c[2] + 2 {
+    for &[a, b, c] in password.array_windows() {
+        if b == c + 1 && a == c + 2 {
             return true;
         }
     }
