@@ -17,8 +17,8 @@ const DIRS: [(i64, i64); 4] = [(1, 0), (0, 1), (-1, 0), (0, -1)];
 /// Check if a polygon is oriented clockwise
 fn is_clockwise(coords: &[(usize, usize)]) -> bool {
     coords
-        .windows(2)
-        .map(|c| (c[1].0 as i64 - c[0].0 as i64) * (c[1].1 as i64 + c[0].1 as i64))
+        .array_windows()
+        .map(|&[c1, c2]| (c2.0 as i64 - c1.0 as i64) * (c2.1 as i64 + c1.1 as i64))
         .sum::<i64>()
         < 0
 }
@@ -119,9 +119,7 @@ fn main() {
     let height = compressed_y.values().max().unwrap() + 1;
 
     let mut grid = vec![vec![0; width]; height];
-    for c in coords.windows(2) {
-        let a = c[0].1;
-        let b = c[1].1;
+    for &[(_, a), (_, b)] in coords.array_windows() {
         if a.0 == b.0 {
             // vertical edge
             for cell in grid.iter_mut().take(a.1.max(b.1) + 1).skip(a.1.min(b.1)) {
@@ -136,9 +134,7 @@ fn main() {
     }
 
     // flood-fill everything inside the polygon
-    for c in coords.windows(2) {
-        let a = c[0].1;
-        let b = c[1].1;
+    for &[(_, a), (_, b)] in coords.array_windows() {
         if a.0 == b.0 {
             // vertical edge
             if a.1 < b.1 {
