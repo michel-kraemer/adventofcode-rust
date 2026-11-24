@@ -1,6 +1,9 @@
-use std::{cmp::Reverse, collections::BinaryHeap, fs, hash::Hash};
-
-use rustc_hash::FxHashSet;
+use std::{
+    cmp::Reverse,
+    collections::{BinaryHeap, HashSet},
+    fs,
+    hash::Hash,
+};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord)]
 enum Spell {
@@ -86,7 +89,7 @@ fn main() {
             effects: Effects::default(),
         }));
 
-        let mut seen = FxHashSet::default();
+        let mut seen = HashSet::new();
         let mut result = 0;
 
         'outer: while let Some(Reverse(s)) = queue.pop() {

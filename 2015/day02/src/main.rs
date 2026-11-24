@@ -6,7 +6,7 @@ fn main() {
     let mut sum = 0;
     let mut ribbon = 0;
     for l in input.lines() {
-        let mut parts = l.split("x");
+        let mut parts = l.split('x');
         let p0 = parts.next().unwrap().parse::<usize>().unwrap();
         let p1 = parts.next().unwrap().parse::<usize>().unwrap();
         let p2 = parts.next().unwrap().parse::<usize>().unwrap();

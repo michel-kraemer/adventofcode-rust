@@ -5,7 +5,7 @@ fn main() {
     let input = input
         .lines()
         .map(|l| {
-            let mut p = l.split(" ");
+            let mut p = l.split(' ');
             let (turn_on, turn_off, from, to) = if p.next().unwrap() == "turn" {
                 let onoff = p.next().unwrap();
                 let from = p.next().unwrap();

@@ -7,7 +7,7 @@ fn main() {
         .map(|l| {
             let (_, is) = l.split_once(": ").unwrap();
             is.split(", ")
-                .map(|i| i.split_once(" ").unwrap().1.parse::<i32>().unwrap())
+                .map(|i| i.split_once(' ').unwrap().1.parse::<i32>().unwrap())
                 .collect::<Vec<_>>()
         })
         .collect::<Vec<_>>();

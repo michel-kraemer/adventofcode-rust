@@ -1,6 +1,4 @@
-use std::fs;
-
-use rustc_hash::FxHashSet;
+use std::{collections::HashSet, fs};
 
 fn main() {
     for part1 in [true, false] {
@@ -10,7 +8,7 @@ fn main() {
         let mut santa_y = 0i64;
         let mut robo_x = 0i64;
         let mut robo_y = 0i64;
-        let mut seen = FxHashSet::default();
+        let mut seen = HashSet::new();
         seen.insert((santa_x, santa_y));
 
         for (i, c) in input.as_bytes().iter().enumerate() {

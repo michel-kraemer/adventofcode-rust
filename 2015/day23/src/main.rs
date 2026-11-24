@@ -66,14 +66,14 @@ fn main() {
                 Instruction::Jmp(offset) => pointer = pointer.checked_add_signed(offset).unwrap(),
                 Instruction::Jie(r, offset) => {
                     if registers[r].is_multiple_of(2) {
-                        pointer = pointer.checked_add_signed(offset).unwrap()
+                        pointer = pointer.checked_add_signed(offset).unwrap();
                     } else {
                         pointer += 1;
                     }
                 }
                 Instruction::Jio(r, offset) => {
                     if registers[r] == 1 {
-                        pointer = pointer.checked_add_signed(offset).unwrap()
+                        pointer = pointer.checked_add_signed(offset).unwrap();
                     } else {
                         pointer += 1;
                     }

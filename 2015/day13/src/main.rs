@@ -56,7 +56,7 @@ fn find(gains: &[i64], n_people: usize, total_people: usize) -> i64 {
                     mm &= mm - 1;
 
                     let d = dp[mask_without_k][m] + gains[m * total_people + k];
-                    v = v.max(d)
+                    v = v.max(d);
                 }
 
                 dp[mask][k] = v;
