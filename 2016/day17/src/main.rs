@@ -14,7 +14,7 @@ fn main() {
         let mut queue = VecDeque::new();
         let mut initial_context = Context::new();
         initial_context.consume(passcode);
-        queue.push_back((0, 0, initial_context, "".to_string()));
+        queue.push_back((0, 0, initial_context, String::new()));
 
         let mut max = 0;
         while let Some((x, y, context, path)) = queue.pop_front() {

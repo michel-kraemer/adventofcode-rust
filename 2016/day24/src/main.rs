@@ -48,7 +48,7 @@ fn held_karp(distances: &[i64], n_distances: usize) -> (i64, i64) {
                     mm &= mm - 1;
 
                     let d = dp[mask_without_k][m] + distances[m * n_distances + k];
-                    v = v.min(d)
+                    v = v.min(d);
                 }
 
                 dp[mask][k] = v;

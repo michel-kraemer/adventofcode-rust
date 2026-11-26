@@ -74,7 +74,7 @@ fn main() {
 
                     if password1.len() < 8 {
                         // add character to password for part 1
-                        password1.push_str(&format!("{:x}", c));
+                        password1.push_str(&format!("{c:x}"));
                     }
 
                     if c < 8 && password2[c as usize] == ' ' {
