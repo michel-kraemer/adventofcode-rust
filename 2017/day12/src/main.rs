@@ -7,12 +7,19 @@ struct Node {
     size: usize,
 }
 
-fn find(x: usize, nodes: &mut [Node]) -> usize {
-    if nodes[x].parent != x {
-        nodes[x].parent = find(nodes[x].parent, nodes);
-        return nodes[x].parent;
+fn find(mut x: usize, nodes: &mut [Node]) -> usize {
+    let mut root = x;
+    while nodes[root].parent != root {
+        root = nodes[root].parent;
     }
-    x
+
+    while nodes[x].parent != root {
+        let parent = nodes[x].parent;
+        nodes[x].parent = root;
+        x = parent;
+    }
+
+    root
 }
 
 fn union(mut x: usize, mut y: usize, nodes: &mut [Node]) {
