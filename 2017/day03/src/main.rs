@@ -11,7 +11,7 @@ fn main() {
     // n * n - 2 * (n - 1)    # upper-left corner
     // n * n - 3 * (n - 1)    # upper-right corner
     // we first find the right ring and then check which edge the number we are
-    // are looking lies on
+    // are looking for lies on
     let mut ring = 1;
     let mut n = 3;
     while n * n < input {

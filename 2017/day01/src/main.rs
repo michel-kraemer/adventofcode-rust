@@ -2,7 +2,7 @@ use std::fs;
 
 fn main() {
     let input = fs::read_to_string("input.txt").expect("Could not read file");
-    let s = input.trim().bytes().collect::<Vec<_>>();
+    let s = input.trim().as_bytes();
 
     let mut total1 = 0;
     let mut total2 = 0;
